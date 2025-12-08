@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package zeus.proto.common;
+
+// Go package path for generated code. We place the generated .pb.go
+// file alongside this .proto under pkg/protos.
+option go_package = "github.com/lk2023060901/danmu-garden-go/pkg/protos";
+
+// Status is a simple status message used by Zeus services.
+message Status {
+  int32 code = 1;
+  string msg = 2;
+}
+
