@@ -49,8 +49,9 @@ import (
 var _globalL, _globalP, _globalS, _globalR, _globalCleanup atomic.Value
 
 var (
-	_globalLevelLogger sync.Map
-	_namedRateLimiters sync.Map
+	_globalLevelLogger  sync.Map
+	_namedRateLimiters  sync.Map
+	_rateLimiterEnabled atomic.Bool
 )
 
 // RateLimiter 是限流日志帮助函数所需的最小接口。
@@ -73,8 +74,11 @@ func init() {
 	s := _globalL.Load().(*zap.Logger).Sugar()
 	_globalS.Store(s)
 
-	// 默认将全局限流器初始化为 nop 实现。
-	_globalR.Store(nopRateLimiter{})
+	// 初始化全局限流器；默认使用 utils.ReconfigurableRateLimiter，
+	// 但默认关闭限流功能，由 R() 决定是否使用。
+	rl := utils.NewRateLimiter(1.0, 60.0)
+	_globalR.Store(rl)
+	_rateLimiterEnabled.Store(false)
 	configureRateLimiterFromEnv()
 }
 
@@ -194,8 +198,13 @@ func S() *zap.SugaredLogger {
 // R 返回用于限流日志的全局 RateLimiter。
 // 始终返回一个合法的限流器；当限流功能被关闭时，会回退到永不丢日志的 nop 实现。
 func R() RateLimiter {
+	// 未启用限流时，直接返回 nop 实现，避免引入额外的性能开销。
+	if !_rateLimiterEnabled.Load() {
+		return nopRateLimiter{}
+	}
+
 	val := _globalR.Load()
-	if rl, ok := val.(RateLimiter); ok && rl != nil {
+	if rl, ok := val.(*utils.ReconfigurableRateLimiter); ok && rl != nil {
 		return rl
 	}
 	return nopRateLimiter{}
@@ -294,24 +303,32 @@ func Level() zap.AtomicLevel {
 	return _globalP.Load().(*ZapProperties).Level
 }
 
-// configureRateLimiterFromEnv configures the global rate limiter based on ZEUS_LOG_RATE_* env vars.
+// configureRateLimiterFromEnv 按 ZEUS_LOG_RATE_* 环境变量配置全局限流器。
 //
-//   - ZEUS_LOG_RATE_ENABLE: "1"/"true" to enable rate limiting (default true).
-//   - ZEUS_LOG_RATE_CREDIT_PER_SECOND: float, default 1.0.
-//   - ZEUS_LOG_RATE_MAX_BALANCE: float, default 60.0.
+//   - ZEUS_LOG_RATE_ENABLE: "1"/"true" 启用限流（默认关闭）。
+//   - ZEUS_LOG_RATE_CREDIT_PER_SECOND: float，默认 1.0。
+//   - ZEUS_LOG_RATE_MAX_BALANCE: float，默认 60.0。
 func configureRateLimiterFromEnv() {
-	// Default is disabled; must be explicitly enabled via env.
+	// 默认关闭限流，只有显式配置 ZEUS_LOG_RATE_ENABLE 时才启用。
 	enabled := getenvBool("ZEUS_LOG_RATE_ENABLE", false)
+	_rateLimiterEnabled.Store(enabled)
+
+	// 无需配置具体参数，直接视为禁用限流。
 	if !enabled {
-		_globalR.Store(nopRateLimiter{})
 		return
 	}
 
 	credit := getenvFloat("ZEUS_LOG_RATE_CREDIT_PER_SECOND", 1.0)
 	maxBalance := getenvFloat("ZEUS_LOG_RATE_MAX_BALANCE", 60.0)
 
-	rl := utils.NewRateLimiter(credit, maxBalance)
-	_globalR.Store(rl)
+	val := _globalR.Load()
+	rl, ok := val.(*utils.ReconfigurableRateLimiter)
+	if !ok || rl == nil {
+		rl = utils.NewRateLimiter(credit, maxBalance)
+		_globalR.Store(rl)
+	} else {
+		rl.Update(credit, maxBalance)
+	}
 }
 
 func getenvDefault(key, def string) string {

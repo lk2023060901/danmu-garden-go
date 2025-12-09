@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/lk2023060901/danmu-garden-go/internal/pool/bytebuffer"
-	protos "github.com/lk2023060901/danmu-garden-go/internal/protos/framework"
+	protos "github.com/lk2023060901/danmu-garden-framework-protos/framework"
 )
 
 // Framer 抽象了基于 Envelope 的打包/解包能力。

@@ -151,6 +151,12 @@ func TestSampling(t *testing.T) {
 }
 
 func TestRatedLog(t *testing.T) {
+	// 启用全局日志限流，并使用稳定的限流参数，保证用例具有确定性。
+	t.Setenv("ZEUS_LOG_RATE_ENABLE", "1")
+	t.Setenv("ZEUS_LOG_RATE_CREDIT_PER_SECOND", "1.0")
+	t.Setenv("ZEUS_LOG_RATE_MAX_BALANCE", "60.0")
+	configureRateLimiterFromEnv()
+
 	ts := newTestLogSpy(t)
 	conf := &Config{Level: "debug", DisableTimestamp: true}
 	logger, p, _ := InitTestLogger(ts, conf)

@@ -1,0 +1,56 @@
+name: Generate Go protobufs
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
+
+      - name: Install protoc-gen-go
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
+          echo "${HOME}/go/bin" >> "${GITHUB_PATH}"
+
+      - name: Generate Go pb files
+        run: |
+          protoc \
+            --go_out=framework \
+            --go_opt=paths=source_relative \
+            framework/common.proto \
+            framework/envelope.proto
+
+      - name: Commit generated files if changed
+        run: |
+          if git diff --quiet; then
+            echo "No changes after protoc generation."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add framework/*.pb.go
+          git commit -m "chore: regenerate protobuf Go files [skip ci]"
+          git push origin HEAD:main
+

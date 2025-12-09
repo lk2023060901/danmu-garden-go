@@ -32,7 +32,7 @@ import (
 	grpcCodes "google.golang.org/grpc/codes"
 	grpcStatus "google.golang.org/grpc/status"
 
-	commonpb "github.com/lk2023060901/danmu-garden-go/internal/protos/framework"
+	commonpb "github.com/lk2023060901/danmu-garden-framework-protos/framework"
 )
 
 func Test_CheckGrpcReady(t *testing.T) {

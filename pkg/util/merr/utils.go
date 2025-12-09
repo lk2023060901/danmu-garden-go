@@ -26,7 +26,7 @@ import (
 
 	"github.com/lk2023060901/danmu-garden-go/pkg/log"
 	"github.com/lk2023060901/danmu-garden-go/pkg/util/logutil"
-	commonpb "github.com/lk2023060901/danmu-garden-go/internal/protos/framework"
+	commonpb "github.com/lk2023060901/danmu-garden-framework-protos/framework"
 )
 
 const InputErrorFlagKey string = "is_input_error"

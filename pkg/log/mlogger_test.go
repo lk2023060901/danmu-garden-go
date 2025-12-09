@@ -57,6 +57,12 @@ func TestExporterV2(t *testing.T) {
 }
 
 func TestMLoggerRatedLog(t *testing.T) {
+	// 启用全局日志限流，确保 Rated* 行为符合预期。
+	t.Setenv("ZEUS_LOG_RATE_ENABLE", "1")
+	t.Setenv("ZEUS_LOG_RATE_CREDIT_PER_SECOND", "1.0")
+	t.Setenv("ZEUS_LOG_RATE_MAX_BALANCE", "60.0")
+	configureRateLimiterFromEnv()
+
 	ts := newTestLogSpy(t)
 	conf := &Config{Level: "debug", DisableTimestamp: true}
 	logger, p, _ := InitTestLogger(ts, conf)
