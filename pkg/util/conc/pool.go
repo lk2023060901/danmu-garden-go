@@ -24,9 +24,9 @@ import (
 
 	ants "github.com/panjf2000/ants/v2"
 
-	"github.com/lk2023060901/danmu-garden-go/pkg/utils/generic"
-	"github.com/lk2023060901/danmu-garden-go/pkg/utils/hardware"
-	"github.com/lk2023060901/danmu-garden-go/pkg/utils/merr"
+	"github.com/lk2023060901/danmu-garden-go/pkg/util/generic"
+	"github.com/lk2023060901/danmu-garden-go/pkg/util/hardware"
+	"github.com/lk2023060901/danmu-garden-go/pkg/util/merr"
 )
 
 // A goroutine pool

@@ -74,6 +74,58 @@ func (x *Status) GetMsg() string {
 	return ""
 }
 
+type KeyValuePair struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=Key,proto3" json:"Key,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=Value,proto3" json:"Value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KeyValuePair) Reset() {
+	*x = KeyValuePair{}
+	mi := &file_pkg_protos_common_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KeyValuePair) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeyValuePair) ProtoMessage() {}
+
+func (x *KeyValuePair) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_protos_common_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeyValuePair.ProtoReflect.Descriptor instead.
+func (*KeyValuePair) Descriptor() ([]byte, []int) {
+	return file_pkg_protos_common_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KeyValuePair) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *KeyValuePair) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
 var File_pkg_protos_common_proto protoreflect.FileDescriptor
 
 const file_pkg_protos_common_proto_rawDesc = "" +
@@ -81,7 +133,10 @@ const file_pkg_protos_common_proto_rawDesc = "" +
 	"\x17pkg/protos/common.proto\x12\x11zeus.proto.common\".\n" +
 	"\x06Status\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\x05R\x04code\x12\x10\n" +
-	"\x03msg\x18\x02 \x01(\tR\x03msgB4Z2github.com/lk2023060901/danmu-garden-go/pkg/protosb\x06proto3"
+	"\x03msg\x18\x02 \x01(\tR\x03msg\"6\n" +
+	"\fKeyValuePair\x12\x10\n" +
+	"\x03Key\x18\x01 \x01(\tR\x03Key\x12\x14\n" +
+	"\x05Value\x18\x02 \x01(\tR\x05ValueB4Z2github.com/lk2023060901/danmu-garden-go/pkg/protosb\x06proto3"
 
 var (
 	file_pkg_protos_common_proto_rawDescOnce sync.Once
@@ -95,9 +150,10 @@ func file_pkg_protos_common_proto_rawDescGZIP() []byte {
 	return file_pkg_protos_common_proto_rawDescData
 }
 
-var file_pkg_protos_common_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_pkg_protos_common_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_pkg_protos_common_proto_goTypes = []any{
-	(*Status)(nil), // 0: zeus.proto.common.Status
+	(*Status)(nil),       // 0: zeus.proto.common.Status
+	(*KeyValuePair)(nil), // 1: zeus.proto.common.KeyValuePair
 }
 var file_pkg_protos_common_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -118,7 +174,7 @@ func file_pkg_protos_common_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_protos_common_proto_rawDesc), len(file_pkg_protos_common_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lk2023060901/danmu-garden-go/pkg/utils/hardware"
+	"github.com/lk2023060901/danmu-garden-go/pkg/util/hardware"
 )
 
 func TestPool(t *testing.T) {

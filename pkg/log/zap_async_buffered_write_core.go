@@ -24,7 +24,7 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/lk2023060901/danmu-garden-go/pkg/metrics"
-	"github.com/lk2023060901/danmu-garden-go/pkg/utils/syncutil"
+	"github.com/lk2023060901/danmu-garden-go/pkg/util/syncutil"
 )
 
 // asyncTextIOCore is a wrapper around the textIOCore that writes the logs to the underlying buffered write syncer.

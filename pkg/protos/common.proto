@@ -12,3 +12,7 @@ message Status {
   string msg = 2;
 }
 
+message KeyValuePair {
+  string Key = 1;
+  string Value = 2;
+}
