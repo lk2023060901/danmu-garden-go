@@ -26,20 +26,20 @@ import (
 )
 
 type poolOption struct {
-	// pre-allocs workers
+	// preAlloc 表示是否预先分配 worker。
 	preAlloc bool
-	// block or not when pool is full
+	// nonBlocking 表示当协程池已满时是否阻塞调用方。
 	nonBlocking bool
-	// duration to cleanup worker goroutine
+	// expiryDuration 为清理空闲 worker 协程的时间间隔。
 	expiryDuration time.Duration
-	// disable purge worker
+	// disablePurge 表示是否禁用定期清理 worker。
 	disablePurge bool
-	// whether conceal panic when job has panic
+	// concealPanic 表示当任务发生 panic 时是否吞掉异常。
 	concealPanic bool
-	// panicHandler when task panics
+	// panicHandler 为任务发生 panic 时的自定义处理逻辑。
 	panicHandler func(any)
 
-	// preHandler function executed before actual method executed
+	// preHandler 为实际任务执行前的预处理函数。
 	preHandler func()
 }
 
@@ -48,8 +48,8 @@ func (opt *poolOption) antsOptions() []ants.Option {
 	result = append(result, ants.WithPreAlloc(opt.preAlloc))
 	result = append(result, ants.WithNonblocking(opt.nonBlocking))
 	result = append(result, ants.WithDisablePurge(opt.disablePurge))
-	// ants recovers panic by default
-	// however the error is not returned
+	// ants 默认会 recover panic，
+	// 但不会将错误返回给调用方。
 	result = append(result, ants.WithPanicHandler(func(v any) {
 		log.Error("Conc pool panicked", zap.Any("panic", v))
 		if !opt.concealPanic {
@@ -66,7 +66,7 @@ func (opt *poolOption) antsOptions() []ants.Option {
 	return result
 }
 
-// PoolOption options function to setup pool.
+// PoolOption 用于配置协程池行为的选项函数。
 type PoolOption func(opt *poolOption)
 
 func defaultPoolOption() *poolOption {

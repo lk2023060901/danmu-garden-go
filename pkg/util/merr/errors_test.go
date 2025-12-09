@@ -66,7 +66,7 @@ func (s *ErrSuite) TestStatusWithCode() {
 }
 
 func (s *ErrSuite) TestWrap() {
-	// Service related
+	// Service 相关错误。
 	s.ErrorIs(WrapErrServiceNotReady("test", 0, "test init..."), ErrServiceNotReady)
 	s.ErrorIs(WrapErrServiceUnavailable("test", "test init"), ErrServiceUnavailable)
 	s.ErrorIs(WrapErrServiceMemoryLimitExceeded(110, 100, "MLE"), ErrServiceMemoryLimitExceeded)
@@ -77,7 +77,7 @@ func (s *ErrSuite) TestWrap() {
 	s.ErrorIs(WrapErrNodeNotMatch(0, 1, "SIM"), ErrNodeNotMatch)
 	s.ErrorIs(WrapErrServiceUnimplemented(errors.New("mock grpc err")), ErrServiceUnimplemented)
 
-	// Collection related
+	// Collection 相关错误。
 	s.ErrorIs(WrapErrCollectionNotFound("test_collection", "failed to get collection"), ErrCollectionNotFound)
 	s.ErrorIs(WrapErrCollectionNotLoaded("test_collection", "failed to query"), ErrCollectionNotLoaded)
 	s.ErrorIs(WrapErrCollectionNotFullyLoaded("test_collection", "failed to query"), ErrCollectionNotFullyLoaded)
@@ -85,12 +85,12 @@ func (s *ErrSuite) TestWrap() {
 	s.ErrorIs(WrapErrCollectionOnRecovering("test_collection", "channel lost %s", "dev"), ErrCollectionOnRecovering)
 	s.ErrorIs(WrapErrCollectionVectorClusteringKeyNotAllowed("test_collection", "field"), ErrCollectionVectorClusteringKeyNotAllowed)
 	s.ErrorIs(WrapErrCollectionSchemaMisMatch("schema mismatch", "field"), ErrCollectionSchemaMismatch)
-	// Partition related
+	// Partition 相关错误。
 	s.ErrorIs(WrapErrPartitionNotFound("test_partition", "failed to get partition"), ErrPartitionNotFound)
 	s.ErrorIs(WrapErrPartitionNotLoaded("test_partition", "failed to query"), ErrPartitionNotLoaded)
 	s.ErrorIs(WrapErrPartitionNotFullyLoaded("test_partition", "failed to query"), ErrPartitionNotFullyLoaded)
 
-	// ResourceGroup related
+	// ResourceGroup 相关错误。
 	s.ErrorIs(WrapErrResourceGroupNotFound("test_ResourceGroup", "failed to get ResourceGroup"), ErrResourceGroupNotFound)
 	s.ErrorIs(WrapErrResourceGroupAlreadyExist("test_ResourceGroup", "failed to get ResourceGroup"), ErrResourceGroupAlreadyExist)
 	s.ErrorIs(WrapErrResourceGroupReachLimit("test_ResourceGroup", 1, "failed to get ResourceGroup"), ErrResourceGroupReachLimit)
@@ -98,55 +98,55 @@ func (s *ErrSuite) TestWrap() {
 	s.ErrorIs(WrapErrResourceGroupNodeNotEnough("test_ResourceGroup", 1, 2, "failed to get ResourceGroup"), ErrResourceGroupNodeNotEnough)
 	s.ErrorIs(WrapErrResourceGroupServiceAvailable("test_ResourceGroup", "failed to get ResourceGroup"), ErrResourceGroupServiceAvailable)
 
-	// Replica related
+	// Replica 相关错误。
 	s.ErrorIs(WrapErrReplicaNotFound(1, "failed to get replica"), ErrReplicaNotFound)
 	s.ErrorIs(WrapErrReplicaNotAvailable(1, "failed to get replica"), ErrReplicaNotAvailable)
 
-	// Channel related
+	// Channel 相关错误。
 	s.ErrorIs(WrapErrChannelNotFound("test_Channel", "failed to get Channel"), ErrChannelNotFound)
 	s.ErrorIs(WrapErrChannelLack("test_Channel", "failed to get Channel"), ErrChannelLack)
 	s.ErrorIs(WrapErrChannelReduplicate("test_Channel", "failed to get Channel"), ErrChannelReduplicate)
 
-	// Segment related
+	// Segment 相关错误。
 	s.ErrorIs(WrapErrSegmentNotFound(1, "failed to get Segment"), ErrSegmentNotFound)
 	s.ErrorIs(WrapErrSegmentNotLoaded(1, "failed to query"), ErrSegmentNotLoaded)
 	s.ErrorIs(WrapErrSegmentLack(1, "lack of segment"), ErrSegmentLack)
 	s.ErrorIs(WrapErrSegmentReduplicate(1, "redundancy of segment"), ErrSegmentReduplicate)
 	s.ErrorIs(WrapErrSegmentRequestResourceFailed("Memory"), ErrSegmentRequestResourceFailed)
 
-	// Node related
+	// Node 相关错误。
 	s.ErrorIs(WrapErrNodeNotFound(1, "failed to get node"), ErrNodeNotFound)
 	s.ErrorIs(WrapErrNodeOffline(1, "failed to access node"), ErrNodeOffline)
 	s.ErrorIs(WrapErrNodeLack(3, 1, "need more nodes"), ErrNodeLack)
 	s.ErrorIs(WrapErrNodeStateUnexpected(1, "Stopping", "failed to suspend node"), ErrNodeStateUnexpected)
 
-	// IO related
+	// IO 相关错误。
 	s.ErrorIs(WrapErrIoKeyNotFound("test_key", "failed to read"), ErrIoKeyNotFound)
 	s.ErrorIs(WrapErrIoFailed("test_key", os.ErrClosed), ErrIoFailed)
 	s.ErrorIs(WrapErrIoUnexpectEOF("test_key", os.ErrClosed), ErrIoUnexpectEOF)
 
-	// Parameter related
+	// 参数相关错误。
 	s.ErrorIs(WrapErrParameterInvalid(8, 1, "failed to create"), ErrParameterInvalid)
 	s.ErrorIs(WrapErrParameterInvalidRange(1, 1<<16, 0, "topk should be in range"), ErrParameterInvalid)
 	s.ErrorIs(WrapErrParameterMissing("alias_name", "no alias parameter"), ErrParameterMissing)
 	s.ErrorIs(WrapErrParameterTooLarge("unit test"), ErrParameterTooLarge)
 
-	// Metrics related
+	// 指标相关错误。
 	s.ErrorIs(WrapErrMetricNotFound("unknown", "failed to get metric"), ErrMetricNotFound)
 
-	// Message queue related
+	// 消息队列相关错误。
 	s.ErrorIs(WrapErrMqTopicNotFound("unknown", "failed to get topic"), ErrMqTopicNotFound)
 	s.ErrorIs(WrapErrMqTopicNotEmpty("unknown", "topic is not empty"), ErrMqTopicNotEmpty)
 	s.ErrorIs(WrapErrMqInternal(errors.New("unknown"), "failed to consume"), ErrMqInternal)
 
-	// field related
+	// 字段相关错误。
 	s.ErrorIs(WrapErrFieldNotFound("meta", "failed to get field"), ErrFieldNotFound)
 
-	// alias related
+	// 别名相关错误。
 	s.ErrorIs(WrapErrAliasNotFound("alias", "failed to get collection id"), ErrAliasNotFound)
 	s.ErrorIs(WrapErrCollectionIDOfAliasNotFound(1000, "failed to get collection id"), ErrCollectionIDOfAliasNotFound)
 
-	// Search/Query related
+	// Search/Query 相关错误。
 	s.ErrorIs(WrapErrInconsistentRequery("unknown"), ErrInconsistentRequery)
 }
 

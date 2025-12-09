@@ -26,57 +26,56 @@ type ctxLogKeyType struct{}
 
 var CtxLogKey = ctxLogKeyType{}
 
-// Debug logs a message at DebugLevel. The message includes any fields passed
-// at the log site, as well as any fields accumulated on the logger.
-// Deprecated: Use Ctx(ctx).Debug instead.
+// Debug 在 Debug 级别输出一条日志。
+// 消息包含调用处传入的字段以及 Logger 已经携带的字段。
+// Deprecated: 请使用 Ctx(ctx).Debug 代替。
 func Debug(msg string, fields ...zap.Field) {
 	L().Debug(msg, fields...)
 }
 
-// Info logs a message at InfoLevel. The message includes any fields passed
-// at the log site, as well as any fields accumulated on the logger.
-// Deprecated: Use Ctx(ctx).Info instead.
+// Info 在 Info 级别输出一条日志。
+// 消息包含调用处传入的字段以及 Logger 已经携带的字段。
+// Deprecated: 请使用 Ctx(ctx).Info 代替。
 func Info(msg string, fields ...zap.Field) {
 	L().Info(msg, fields...)
 }
 
-// Warn logs a message at WarnLevel. The message includes any fields passed
-// at the log site, as well as any fields accumulated on the logger.
-// Deprecated: Use Ctx(ctx).Warn instead.
+// Warn 在 Warn 级别输出一条日志。
+// 消息包含调用处传入的字段以及 Logger 已经携带的字段。
+// Deprecated: 请使用 Ctx(ctx).Warn 代替。
 func Warn(msg string, fields ...zap.Field) {
 	L().Warn(msg, fields...)
 }
 
-// Error logs a message at ErrorLevel. The message includes any fields passed
-// at the log site, as well as any fields accumulated on the logger.
-// Deprecated: Use Ctx(ctx).Error instead.
+// Error 在 Error 级别输出一条日志。
+// 消息包含调用处传入的字段以及 Logger 已经携带的字段。
+// Deprecated: 请使用 Ctx(ctx).Error 代替。
 func Error(msg string, fields ...zap.Field) {
 	L().Error(msg, fields...)
 }
 
-// Panic logs a message at PanicLevel. The message includes any fields passed
-// at the log site, as well as any fields accumulated on the logger.
+// Panic 在 Panic 级别输出一条日志。
+// 消息包含调用处传入的字段以及 Logger 已经携带的字段。
 //
-// The logger then panics, even if logging at PanicLevel is disabled.
-// Deprecated: Use Ctx(ctx).Panic instead.
+// 无论是否开启 Panic 级别日志，Logger 都会在记录后直接触发 panic。
+// Deprecated: 请使用 Ctx(ctx).Panic 代替。
 func Panic(msg string, fields ...zap.Field) {
 	L().Panic(msg, fields...)
 }
 
-// Fatal logs a message at FatalLevel. The message includes any fields passed
-// at the log site, as well as any fields accumulated on the logger.
+// Fatal 在 Fatal 级别输出一条日志。
+// 消息包含调用处传入的字段以及 Logger 已经携带的字段。
 //
-// The logger then calls os.Exit(1), even if logging at FatalLevel is
-// disabled.
-// Deprecated: Use Ctx(ctx).Fatal instead.
+// 无论是否开启 Fatal 级别日志，Logger 都会在记录后调用 os.Exit(1) 退出进程。
+// Deprecated: 请使用 Ctx(ctx).Fatal 代替。
 func Fatal(msg string, fields ...zap.Field) {
 	L().Fatal(msg, fields...)
 }
 
-// RatedDebug print logs at debug level
-// it limit log print to avoid too many logs
-// return true if log successfully
-// Deprecated: Use Ctx(ctx).RatedDebug instead.
+// RatedDebug 以 Debug 级别输出限流日志。
+// 通过限流器控制日志打印频率，避免产生过多日志。
+// 返回值为 true 表示本次日志已成功输出。
+// Deprecated: 请使用 Ctx(ctx).RatedDebug 代替。
 func RatedDebug(cost float64, msg string, fields ...zap.Field) bool {
 	if R().CheckCredit(cost) {
 		L().Debug(msg, fields...)
@@ -85,10 +84,10 @@ func RatedDebug(cost float64, msg string, fields ...zap.Field) bool {
 	return false
 }
 
-// RatedInfo print logs at info level
-// it limit log print to avoid too many logs
-// return true if log successfully
-// Deprecated: Use Ctx(ctx).RatedInfo instead.
+// RatedInfo 以 Info 级别输出限流日志。
+// 通过限流器控制日志打印频率，避免产生过多日志。
+// 返回值为 true 表示本次日志已成功输出。
+// Deprecated: 请使用 Ctx(ctx).RatedInfo 代替。
 func RatedInfo(cost float64, msg string, fields ...zap.Field) bool {
 	if R().CheckCredit(cost) {
 		L().Info(msg, fields...)
@@ -97,10 +96,10 @@ func RatedInfo(cost float64, msg string, fields ...zap.Field) bool {
 	return false
 }
 
-// RatedWarn print logs at warn level
-// it limit log print to avoid too many logs
-// return true if log successfully
-// Deprecated: Use Ctx(ctx).RatedWarn instead.
+// RatedWarn 以 Warn 级别输出限流日志。
+// 通过限流器控制日志打印频率，避免产生过多日志。
+// 返回值为 true 表示本次日志已成功输出。
+// Deprecated: 请使用 Ctx(ctx).RatedWarn 代替。
 func RatedWarn(cost float64, msg string, fields ...zap.Field) bool {
 	if R().CheckCredit(cost) {
 		L().Warn(msg, fields...)
@@ -109,9 +108,9 @@ func RatedWarn(cost float64, msg string, fields ...zap.Field) bool {
 	return false
 }
 
-// With creates a child logger and adds structured context to it.
-// Fields added to the child don't affect the parent, and vice versa.
-// Deprecated: Use Ctx(ctx).With instead.
+// With 创建一个携带额外字段的子 Logger。
+// 子 Logger 添加的字段不会影响父 Logger，反之亦然。
+// Deprecated: 请使用 Ctx(ctx).With 代替。
 func With(fields ...zap.Field) *MLogger {
 	return &MLogger{
 		Logger: L().WithOptions(zap.WrapCore(func(core zapcore.Core) zapcore.Core {
@@ -120,34 +119,34 @@ func With(fields ...zap.Field) *MLogger {
 	}
 }
 
-// SetLevel alters the logging level.
+// SetLevel 设置全局日志级别。
 func SetLevel(l zapcore.Level) {
 	_globalP.Load().(*ZapProperties).Level.SetLevel(l)
 }
 
-// GetLevel gets the logging level.
+// GetLevel 获取当前全局日志级别。
 func GetLevel() zapcore.Level {
 	return _globalP.Load().(*ZapProperties).Level.Level()
 }
 
-// WithTraceID returns a context with trace_id attached
+// WithTraceID 返回一个携带 trace_id 字段的上下文。
 func WithTraceID(ctx context.Context, traceID string) context.Context {
 	return WithFields(ctx, zap.String("traceID", traceID))
 }
 
-// WithReqID adds given reqID field to the logger in ctx
+// WithReqID 为 ctx 中的 Logger 添加 reqID 字段。
 func WithReqID(ctx context.Context, reqID int64) context.Context {
 	fields := []zap.Field{zap.Int64("reqID", reqID)}
 	return WithFields(ctx, fields...)
 }
 
-// WithModule adds given module field to the logger in ctx
+// WithModule 为 ctx 中的 Logger 添加模块名字段。
 func WithModule(ctx context.Context, module string) context.Context {
 	fields := []zap.Field{zap.String(FieldNameModule, module)}
 	return WithFields(ctx, fields...)
 }
 
-// WithFields returns a context with fields attached
+// WithFields 返回一个附加了指定字段的上下文。
 func WithFields(ctx context.Context, fields ...zap.Field) context.Context {
 	var zlogger *zap.Logger
 	if ctxLogger, ok := ctx.Value(CtxLogKey).(*MLogger); ok {
@@ -161,7 +160,7 @@ func WithFields(ctx context.Context, fields ...zap.Field) context.Context {
 	return context.WithValue(ctx, CtxLogKey, mLogger)
 }
 
-// NewIntentContext creates a new context with intent information and returns it along with a span.
+// NewIntentContext 创建一个携带意图信息的新上下文，并返回对应的 trace.Span。
 func NewIntentContext(name string, intent string) (context.Context, trace.Span) {
 	intentCtx, initSpan := otel.Tracer(name).Start(context.Background(), intent)
 	intentCtx = WithFields(intentCtx,
@@ -171,7 +170,7 @@ func NewIntentContext(name string, intent string) (context.Context, trace.Span) 
 	return intentCtx, initSpan
 }
 
-// Ctx returns a logger which will log contextual messages attached in ctx
+// Ctx 返回一个基于 ctx 附加字段输出日志的 Logger。
 func Ctx(ctx context.Context) *MLogger {
 	if ctx == nil {
 		return &MLogger{Logger: ctxL()}
@@ -182,7 +181,8 @@ func Ctx(ctx context.Context) *MLogger {
 	return &MLogger{Logger: ctxL()}
 }
 
-// withLogLevel returns ctx with a leveled logger, notes that it will overwrite logger previous attached!
+// withLogLevel 返回一个携带指定日志级别 Logger 的上下文。
+// 注意：该函数会覆盖之前已经附加在 ctx 上的 Logger。
 func withLogLevel(ctx context.Context, level zapcore.Level) context.Context {
 	var zlogger *zap.Logger
 	switch level {
@@ -202,32 +202,32 @@ func withLogLevel(ctx context.Context, level zapcore.Level) context.Context {
 	return context.WithValue(ctx, CtxLogKey, &MLogger{Logger: zlogger})
 }
 
-// WithDebugLevel returns context with a debug level enabled logger.
-// Notes that it will overwrite previous attached logger within context
+// WithDebugLevel 返回一个携带 Debug 级别 Logger 的上下文。
+// 注意：会覆盖之前附加在 ctx 上的 Logger。
 func WithDebugLevel(ctx context.Context) context.Context {
 	return withLogLevel(ctx, zapcore.DebugLevel)
 }
 
-// WithInfoLevel returns context with a info level enabled logger.
-// Notes that it will overwrite previous attached logger within context
+// WithInfoLevel 返回一个携带 Info 级别 Logger 的上下文。
+// 注意：会覆盖之前附加在 ctx 上的 Logger。
 func WithInfoLevel(ctx context.Context) context.Context {
 	return withLogLevel(ctx, zapcore.InfoLevel)
 }
 
-// WithWarnLevel returns context with a warning level enabled logger.
-// Notes that it will overwrite previous attached logger within context
+// WithWarnLevel 返回一个携带 Warn 级别 Logger 的上下文。
+// 注意：会覆盖之前附加在 ctx 上的 Logger。
 func WithWarnLevel(ctx context.Context) context.Context {
 	return withLogLevel(ctx, zapcore.WarnLevel)
 }
 
-// WithErrorLevel returns context with a error level enabled logger.
-// Notes that it will overwrite previous attached logger within context
+// WithErrorLevel 返回一个携带 Error 级别 Logger 的上下文。
+// 注意：会覆盖之前附加在 ctx 上的 Logger。
 func WithErrorLevel(ctx context.Context) context.Context {
 	return withLogLevel(ctx, zapcore.ErrorLevel)
 }
 
-// WithFatalLevel returns context with a fatal level enabled logger.
-// Notes that it will overwrite previous attached logger within context
+// WithFatalLevel 返回一个携带 Fatal 级别 Logger 的上下文。
+// 注意：会覆盖之前附加在 ctx 上的 Logger。
 func WithFatalLevel(ctx context.Context) context.Context {
 	return withLogLevel(ctx, zapcore.FatalLevel)
 }

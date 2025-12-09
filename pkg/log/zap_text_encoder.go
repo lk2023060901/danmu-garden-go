@@ -46,7 +46,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// DefaultTimeEncoder serializes time.Time to a human-readable formatted string
+// DefaultTimeEncoder 将 time.Time 序列化为可读性较好的字符串。
 func DefaultTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	s := t.Format("2006/01/02 15:04:05.000 -07:00")
 	if e, ok := enc.(*textEncoder); ok {
@@ -58,12 +58,12 @@ func DefaultTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(s)
 }
 
-// ShortCallerEncoder serializes a caller in file:line format.
+// ShortCallerEncoder 以 file:line 形式序列化调用方信息。
 func ShortCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(caller.TrimmedPath())
 }
 
-// For JSON-escaping; see textEncoder.safeAddString below.
+// 用于 JSON 转义；具体逻辑见 textEncoder.safeAddString。
 const _hex = "0123456789abcdef"
 
 var _textPool = sync.Pool{New: func() interface{} {
@@ -72,7 +72,7 @@ var _textPool = sync.Pool{New: func() interface{} {
 
 var (
 	_pool = buffer.NewPool()
-	// Get retrieves a buffer from the pool, creating one if necessary.
+	// Get 从缓冲池中获取一个 buffer，如有必要会创建新的实例。
 	Get = _pool.Get
 )
 
@@ -96,11 +96,11 @@ func putTextEncoder(enc *textEncoder) {
 type textEncoder struct {
 	*zapcore.EncoderConfig
 	buf                 *buffer.Buffer
-	spaced              bool // include spaces after colons and commas
+	spaced              bool // 是否在冒号和逗号后添加空格。
 	openNamespaces      int
 	disableErrorVerbose bool
 
-	// for encoding generic values by reflection
+	// 通过反射编码通用类型时使用的缓冲区与编码器。
 	reflectBuf *buffer.Buffer
 	reflectEnc *jsoniter.Encoder
 }
@@ -114,11 +114,11 @@ func NewTextEncoder(encoderConfig *zapcore.EncoderConfig, spaced bool, disableEr
 	}
 }
 
-// NewTextEncoderByConfig creates a fast, low-allocation Text encoder with config. The encoder
-// appropriately escapes all field keys and values.
+// NewTextEncoderByConfig 根据配置创建一个高性能、低分配的文本编码器。
+// 该编码器会对所有字段键和值进行适当转义。
 func NewTextEncoderByConfig(cfg *Config) zapcore.Encoder {
 	cc := zapcore.EncoderConfig{
-		// Keys can be anything except the empty string.
+		// 日志字段的键名，只要不是空字符串即可。
 		TimeKey:        "time",
 		LevelKey:       "level",
 		NameKey:        "name",
@@ -277,7 +277,7 @@ func (enc *textEncoder) AppendByteString(val []byte) {
 
 func (enc *textEncoder) AppendComplex128(val complex128) {
 	enc.addElementSeparator()
-	// Cast to a platform-independent, fixed-size type.
+	// 将复数拆分为平台无关的固定精度实部和虚部。
 	r, i := real(val), imag(val)
 	enc.buf.AppendFloat(r, 64)
 	enc.buf.AppendByte('+')
@@ -289,8 +289,7 @@ func (enc *textEncoder) AppendDuration(val time.Duration) {
 	cur := enc.buf.Len()
 	enc.EncodeDuration(val, enc)
 	if cur == enc.buf.Len() {
-		// User-supplied EncodeDuration is a no-op. Fall back to nanoseconds to keep
-		// JSON valid.
+		// 如果用户自定义的 EncodeDuration 没有实际写入，则回退为以纳秒表示的整数，保证 JSON 合法。
 		enc.AppendInt64(int64(val))
 	}
 }
@@ -320,8 +319,7 @@ func (enc *textEncoder) AppendTime(val time.Time) {
 	cur := enc.buf.Len()
 	enc.EncodeTime(val, enc)
 	if cur == enc.buf.Len() {
-		// User-supplied EncodeTime is a no-op. Fall back to nanos since epoch to keep
-		// output JSON valid.
+		// 如果用户自定义的 EncodeTime 没有实际写入，则回退为自纪元以来的纳秒时间戳，保证 JSON 合法。
 		enc.AppendInt64(val.UnixNano())
 	}
 }
@@ -429,16 +427,14 @@ func (enc *textEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 		cur := final.buf.Len()
 		nameEncoder := final.EncodeName
 
-		// if no name encoder provided, fall back to FullNameEncoder for backwards
-		// compatibility
+		// 如果没有提供 name 编码器，则退回到 FullNameEncoder 以保持向后兼容。
 		if nameEncoder == nil {
 			nameEncoder = zapcore.FullNameEncoder
 		}
 
 		nameEncoder(ent.LoggerName, final)
 		if cur == final.buf.Len() {
-			// User-supplied EncodeName was a no-op. Fall back to strings to
-			// keep output JSON valid.
+			// 如果用户自定义的 EncodeName 没有实际写入，则退回到字符串形式，保证 JSON 合法。
 			final.AppendString(ent.LoggerName)
 		}
 		final.endQuoteFiled()
@@ -448,13 +444,13 @@ func (enc *textEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (
 		cur := final.buf.Len()
 		final.EncodeCaller(ent.Caller, final)
 		if cur == final.buf.Len() {
-			// User-supplied EncodeCaller was a no-op. Fall back to strings to
-			// keep output JSON valid.
+			// 如果用户自定义的 EncodeCaller 没有实际写入，则退回到字符串形式，保证 JSON 合法。
 			final.AppendString(ent.Caller.String())
 		}
 		final.endQuoteFiled()
 	}
 	// add Message
+	// 添加日志消息正文。
 	if len(ent.Message) > 0 {
 		final.beginQuoteFiled()
 		final.AppendString(ent.Message)
@@ -526,9 +522,8 @@ func (enc *textEncoder) appendFloat(val float64, bitSize int) {
 	}
 }
 
-// safeAddString JSON-escapes a string and appends it to the internal buffer.
-// Unlike the standard library's encoder, it doesn't attempt to protect the
-// user from browser vulnerabilities or JSONP-related problems.
+// safeAddString 对字符串进行 JSON 转义，并追加到内部缓冲区。
+// 与标准库不同，它不会尝试处理浏览器相关漏洞或 JSONP 相关问题。
 func (enc *textEncoder) safeAddString(s string) {
 	for i := 0; i < len(s); {
 		if enc.tryAddRuneSelf(s[i]) {
@@ -545,7 +540,7 @@ func (enc *textEncoder) safeAddString(s string) {
 	}
 }
 
-// safeAddStringWithQuote will automatically add quotoes.
+// safeAddStringWithQuote 自动为字符串添加引号并进行 JSON 转义。
 func (enc *textEncoder) safeAddStringWithQuote(s string) {
 	if !enc.needDoubleQuotes(s) {
 		enc.safeAddString(s)
@@ -556,7 +551,7 @@ func (enc *textEncoder) safeAddStringWithQuote(s string) {
 	enc.buf.AppendByte('"')
 }
 
-// safeAddByteString is no-alloc equivalent of safeAddString(string(s)) for s []byte.
+// safeAddByteString 是 safeAddString(string(s)) 的零分配等价实现，适用于 []byte。
 func (enc *textEncoder) safeAddByteString(s []byte) {
 	for i := 0; i < len(s); {
 		if enc.tryAddRuneSelf(s[i]) {
@@ -573,7 +568,8 @@ func (enc *textEncoder) safeAddByteString(s []byte) {
 	}
 }
 
-// See [log-fileds](https://github.com/tikv/rfcs/blob/master/text/2018-12-19-unified-log-format.md#log-fields-section).
+// 具体字段格式可参考：
+// [log-fields](https://github.com/tikv/rfcs/blob/master/text/2018-12-19-unified-log-format.md#log-fields-section)。
 func (enc *textEncoder) needDoubleQuotes(s string) bool {
 	for i := 0; i < len(s); {
 		b := s[i]
@@ -589,7 +585,7 @@ func (enc *textEncoder) needDoubleQuotes(s string) bool {
 	return false
 }
 
-// tryAddRuneSelf appends b if it is valid UTF-8 character represented in a single byte.
+// tryAddRuneSelf 在 b 是单字节 UTF-8 有效字符时直接追加到缓冲区。
 func (enc *textEncoder) tryAddRuneSelf(b byte) bool {
 	if b >= utf8.RuneSelf {
 		return false
@@ -613,7 +609,7 @@ func (enc *textEncoder) tryAddRuneSelf(b byte) bool {
 		enc.buf.AppendByte('t')
 
 	default:
-		// Encode bytes < 0x20, except for the escape sequences above.
+		// 对小于 0x20 的字节进行编码（除上面列出的转义序列外）。
 		enc.buf.AppendString(`\u00`)
 		enc.buf.AppendByte(_hex[b>>4])
 		enc.buf.AppendByte(_hex[b&0xF])
@@ -633,7 +629,7 @@ func (enc *textEncoder) addFields(fields []zapcore.Field) {
 	for _, f := range fields {
 		if f.Type == zapcore.ErrorType {
 			// handle ErrorType in pingcap/log to fix "[key=?,keyVerbose=?]" problem.
-			// see more detail at https://github.com/pingcap/log/pull/5
+			// 详情可参考：https://github.com/pingcap/log/pull/5
 			enc.encodeError(f)
 			continue
 		}
@@ -655,8 +651,7 @@ func (enc *textEncoder) encodeError(f zapcore.Field) {
 	if e, isFormatter := err.(fmt.Formatter); isFormatter {
 		verbose := fmt.Sprintf("%+v", e)
 		if verbose != basic {
-			// This is a rich error type, like those produced by
-			// errors.
+			// 当错误实现了 fmt.Formatter 时，这里会输出完整堆栈等更丰富的信息。
 			enc.beginQuoteFiled()
 			enc.AddString(f.Key+"Verbose", verbose)
 			enc.endQuoteFiled()

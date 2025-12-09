@@ -16,23 +16,31 @@
 
 package common
 
+// EPHealth 表示单个端点的健康状态。
+// EP 为端点地址；Health 表示是否健康；Reason 为不健康时的原因描述。
 type EPHealth struct {
 	EP     string `json:"endpoint"`
 	Health bool   `json:"health"`
 	Reason string `json:"error,omitempty"`
 }
 
+// ClusterStatus 表示整个集群的健康状态摘要。
+// Health 为整体健康状态；Reason 为不健康原因；Members 为各端点的健康明细。
 type ClusterStatus struct {
 	Health  bool       `json:"health_status"`
 	Reason  string     `json:"unhealthy_reason"`
 	Members []EPHealth `json:"members_health"`
 }
 
+// MQClusterStatus 表示消息队列集群的健康状态。
+// 在 ClusterStatus 的基础上增加 MqType 字段，用于标识 MQ 类型。
 type MQClusterStatus struct {
 	ClusterStatus
 	MqType string `json:"mq_type"`
 }
 
+// MetaClusterStatus 表示元数据集群的健康状态。
+// 在 ClusterStatus 的基础上增加 MetaType 字段，用于标识元数据存储类型。
 type MetaClusterStatus struct {
 	ClusterStatus
 	MetaType string `json:"meta_type"`

@@ -32,7 +32,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// NOTE: The code in this file is based on code from go.uber.org/zap, licensed under the MIT License
+// 说明：本文件中的部分代码基于 go.uber.org/zap 中的实现，遵循 MIT 许可。
 //
 // https://github.com/uber-go/zap/blob/0c427222737cbbbdc53ebdf852c511f7aca0818b/zaptest/logger.go
 
@@ -53,8 +53,7 @@ func newTestingWriter(t zaptest.TestingT) testingWriter {
 	return testingWriter{t: t}
 }
 
-// WithMarkFailed returns a copy of this testingWriter with markFailed set to
-// the provided value.
+// WithMarkFailed 返回一个新的 testingWriter 副本，并设置 markFailed 标志。
 func (w testingWriter) WithMarkFailed(v bool) testingWriter {
 	w.markFailed = v
 	return w
@@ -63,10 +62,10 @@ func (w testingWriter) WithMarkFailed(v bool) testingWriter {
 func (w testingWriter) Write(p []byte) (n int, err error) {
 	n = len(p)
 
-	// Strip trailing newline because t.Log always adds one.
+	// 去掉末尾换行符，因为 t.Log 会自动追加一个换行。
 	p = bytes.TrimRight(p, "\n")
 
-	// Note: t.Log is safe for concurrent use.
+	// 注意：t.Log 在并发场景下是安全的。
 	w.t.Logf("%s", p)
 	if w.markFailed {
 		w.t.Fail()

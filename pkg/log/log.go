@@ -53,12 +53,12 @@ var (
 	_namedRateLimiters sync.Map
 )
 
-// RateLimiter is the minimal interface used by rated logging helpers.
+// RateLimiter 是限流日志帮助函数所需的最小接口。
 type RateLimiter interface {
 	CheckCredit(delta float64) bool
 }
 
-// nopRateLimiter never drops logs.
+// nopRateLimiter 永远不会丢弃日志。
 type nopRateLimiter struct{}
 
 func (nopRateLimiter) CheckCredit(delta float64) bool { return true }
@@ -73,12 +73,12 @@ func init() {
 	s := _globalL.Load().(*zap.Logger).Sugar()
 	_globalS.Store(s)
 
-	// Initialize rate limiter as nop by default.
+	// 默认将全局限流器初始化为 nop 实现。
 	_globalR.Store(nopRateLimiter{})
 	configureRateLimiterFromEnv()
 }
 
-// InitLogger initializes a zap logger.
+// InitLogger 初始化一个 zap 日志器。
 func InitLogger(cfg *Config, opts ...zap.Option) (*zap.Logger, *ZapProperties, error) {
 	var outputs []zapcore.WriteSyncer
 	if len(cfg.File.Filename) > 0 {
@@ -115,7 +115,7 @@ func InitLogger(cfg *Config, opts ...zap.Option) (*zap.Logger, *ZapProperties, e
 	return debugL.WithOptions(zap.AddCallerSkip(1)), r, nil
 }
 
-// InitTestLogger initializes a logger for unit tests
+// InitTestLogger 为单元测试初始化日志器。
 func InitTestLogger(t zaptest.TestingT, cfg *Config, opts ...zap.Option) (*zap.Logger, *ZapProperties, error) {
 	writer := newTestingWriter(t)
 	zapOptions := []zap.Option{
@@ -127,7 +127,7 @@ func InitTestLogger(t zaptest.TestingT, cfg *Config, opts ...zap.Option) (*zap.L
 	return InitLoggerWithWriteSyncer(cfg, writer, opts...)
 }
 
-// InitLoggerWithWriteSyncer initializes a zap logger with specified  write syncer.
+// InitLoggerWithWriteSyncer 使用指定的 WriteSyncer 初始化 zap 日志器。
 func InitLoggerWithWriteSyncer(cfg *Config, output zapcore.WriteSyncer, opts ...zap.Option) (*zap.Logger, *ZapProperties, error) {
 	level := zap.NewAtomicLevel()
 	err := level.UnmarshalText([]byte(cfg.Level))
@@ -151,7 +151,7 @@ func InitLoggerWithWriteSyncer(cfg *Config, output zapcore.WriteSyncer, opts ...
 	return lg, r, nil
 }
 
-// initFileLog initializes file based logging options.
+// initFileLog 初始化基于文件的日志输出配置。
 func initFileLog(cfg *FileLogConfig) (*lumberjack.Logger, error) {
 	logPath := strings.Join([]string{cfg.RootPath, cfg.Filename}, string(filepath.Separator))
 	if st, err := os.Stat(logPath); err == nil {
@@ -163,7 +163,7 @@ func initFileLog(cfg *FileLogConfig) (*lumberjack.Logger, error) {
 		cfg.MaxSize = defaultLogMaxSize
 	}
 
-	// use lumberjack to logrotate
+	// 使用 lumberjack 进行日志滚动。
 	return &lumberjack.Logger{
 		Filename:   logPath,
 		MaxSize:    cfg.MaxSize,
@@ -179,21 +179,20 @@ func newStdLogger() (*zap.Logger, *ZapProperties) {
 	return lg, r
 }
 
-// L returns the global Logger, which can be reconfigured with ReplaceGlobals.
-// It's safe for concurrent use.
+// L 返回全局 Logger，可通过 ReplaceGlobals 重新配置。
+// 该函数是并发安全的。
 func L() *zap.Logger {
 	return _globalL.Load().(*zap.Logger)
 }
 
-// S returns the global SugaredLogger, which can be reconfigured with
-// ReplaceGlobals. It's safe for concurrent use.
+// S 返回全局 SugaredLogger，可通过 ReplaceGlobals 重新配置。
+// 该函数是并发安全的。
 func S() *zap.SugaredLogger {
 	return _globalS.Load().(*zap.SugaredLogger)
 }
 
-// R returns the global RateLimiter used by rated logging helpers.
-// It always returns a valid limiter; when rate limiting is disabled,
-// it falls back to a nop implementation that never drops logs.
+// R 返回用于限流日志的全局 RateLimiter。
+// 始终返回一个合法的限流器；当限流功能被关闭时，会回退到永不丢日志的 nop 实现。
 func R() RateLimiter {
 	val := _globalR.Load()
 	if rl, ok := val.(RateLimiter); ok && rl != nil {
@@ -236,7 +235,7 @@ func fatalL() *zap.Logger {
 	return v.(*zap.Logger)
 }
 
-// Cleanup cleans up the global logger and sugared logger.
+// Cleanup 清理全局 Logger 和 SugaredLogger。
 func Cleanup() {
 	cleanup := _globalCleanup.Load()
 	if cleanup != nil {
@@ -244,15 +243,15 @@ func Cleanup() {
 	}
 }
 
-// ReplaceGlobals replaces the global Logger and SugaredLogger.
-// It's safe for concurrent use.
+// ReplaceGlobals 替换全局 Logger 和 SugaredLogger。
+// 该函数是并发安全的。
 func ReplaceGlobals(logger *zap.Logger, props *ZapProperties) {
 	_globalL.Store(logger)
 	_globalS.Store(logger.Sugar())
 	_globalP.Store(props)
 }
 
-// registerCleanup registers a cleanup function to be called when the global logger is cleaned up.
+// registerCleanup 注册全局日志清理时需要执行的清理函数。
 func registerCleanup(cleanup func()) {
 	oldCleanup := _globalCleanup.Swap(cleanup)
 	if oldCleanup != nil {

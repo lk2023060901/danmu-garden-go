@@ -43,9 +43,9 @@ import (
 )
 
 const (
-	// DefaultServiceRoot default root path used in kv by Session
+	// DefaultServiceRoot 为 Session 在 kv 中使用的默认根路径。
 	DefaultServiceRoot = "session/"
-	// DefaultIDKey default id key for Session
+	// DefaultIDKey 为 Session 使用的默认自增 ID 键名。
 	DefaultIDKey                        = "id"
 	SupportedLabelPrefix                = "ZEUS_SERVER_LABEL_"
 	LabelStreamingNodeEmbeddedQueryNode = "QUERYNODE_STREAMING-EMBEDDED"
@@ -61,17 +61,17 @@ const (
 
 var defaultSessionVersion = semver.MustParse("0.0.0")
 
-// EnableEmbededQueryNodeLabel set server labels for embedded query node.
+// EnableEmbededQueryNodeLabel 为嵌入式 Query Node 设置服务标签。
 func EnableEmbededQueryNodeLabel() {
 	os.Setenv(SupportedLabelPrefix+LabelStreamingNodeEmbeddedQueryNode, "1")
 }
 
-// EnableStandaloneLabel set server labels for standalone.
+// EnableStandaloneLabel 为独立模式设置服务标签。
 func EnableStandaloneLabel() {
 	os.Setenv(SupportedLabelPrefix+LabelStandalone, "1")
 }
 
-// SessionEventType session event type
+// SessionEventType 表示 Session 事件类型。
 type SessionEventType int
 
 func (t SessionEventType) String() string {
@@ -87,19 +87,18 @@ func (t SessionEventType) String() string {
 	}
 }
 
-// Rewatch defines the behavior outer session watch handles ErrCompacted
-// it should process the current full list of session
-// and returns err if meta error or anything else goes wrong
+// Rewatch 定义外部在处理 ErrCompacted 时对 Session 列表的重放行为。
+// 调用方应在此函数中完整处理当前 Session 列表，如发生元数据错误则返回 error。
 type Rewatch func(sessions map[string]*Session) error
 
 const (
-	// SessionNoneEvent place holder for zero value
+	// SessionNoneEvent 为零值占位事件。
 	SessionNoneEvent SessionEventType = iota
-	// SessionAddEvent event type for a new Session Added
+	// SessionAddEvent 表示有新的 Session 被添加。
 	SessionAddEvent
-	// SessionDelEvent event type for a Session deleted
+	// SessionDelEvent 表示有 Session 被删除。
 	SessionDelEvent
-	// SessionUpdateEvent event type for a Session stopping
+	// SessionUpdateEvent 表示 Session 状态发生更新（如正在停止）。
 	SessionUpdateEvent
 )
 
@@ -108,7 +107,7 @@ type IndexEngineVersion struct {
 	CurrentIndexVersion int32 `json:"CurrentIndexVersion,omitempty"`
 }
 
-// SessionRaw the persistent part of Session.
+// SessionRaw 为 Session 的持久化部分。
 type SessionRaw struct {
 	ServerID                 int64  `json:"ServerID,omitempty"`
 	ServerName               string `json:"ServerName,omitempty"`
@@ -142,12 +141,9 @@ func (s *SessionRaw) IsTriggerKill() bool {
 	return s.TriggerKill
 }
 
-// Session is a struct to store service's session, including ServerID, ServerName,
-// Address.
-// Exclusive indicates that this server can only start one.
-// TODO: it's a bad implementation to mix up the service registration and service diescovery into one struct.
-// because the registration is used by server side, but the discovery is used by client side.
-// we should split the service registration and service diescovery.
+// Session 用于存储服务的会话信息，包括 ServerID、ServerName、Address 等。
+// Exclusive 表示该服务是否只能启动单实例。
+// TODO: 当前同时承担“服务注册”和“服务发现”两种职责，设计上应拆分为两个独立结构。
 type Session struct {
 	log.Binder
 
@@ -191,7 +187,7 @@ func WithResueNodeID(b bool) SessionOption {
 	return func(session *Session) { session.reuseNodeID = b }
 }
 
-// WithIndexEngineVersion should be only used by querynode.
+// WithIndexEngineVersion 仅应由 QueryNode 使用，用于填充索引引擎版本信息。
 func WithIndexEngineVersion(minimal, current int32) SessionOption {
 	return func(session *Session) {
 		session.IndexEngineVersion.MinimalIndexVersion = minimal
@@ -199,7 +195,7 @@ func WithIndexEngineVersion(minimal, current int32) SessionOption {
 	}
 }
 
-// WithScalarIndexEngineVersion should be only used by querynode.
+// WithScalarIndexEngineVersion 仅应由 QueryNode 使用，用于填充标量索引引擎版本信息。
 func WithScalarIndexEngineVersion(minimal, current int32) SessionOption {
 	return func(session *Session) {
 		session.ScalarIndexEngineVersion.MinimalIndexVersion = minimal
@@ -219,7 +215,7 @@ func (s *Session) apply(opts ...SessionOption) {
 	}
 }
 
-// UnmarshalJSON unmarshal bytes to Session.
+// UnmarshalJSON 将 JSON 字节反序列化为 Session。
 func (s *Session) UnmarshalJSON(data []byte) error {
 	err := json.Unmarshal(data, &s.SessionRaw)
 	if err != nil {
@@ -236,22 +232,22 @@ func (s *Session) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON marshals session to bytes.
+// MarshalJSON 将 Session 序列化为 JSON 字节。
 func (s *Session) MarshalJSON() ([]byte, error) {
 	s.SessionRaw.Version = s.Version.String()
 	return json.Marshal(s.SessionRaw)
 }
 
-// Create a new Session object. Will use global etcd client
+// NewSession 创建一个新的 Session 对象。
 func NewSession(ctx context.Context, opts ...SessionOption) *Session {
 	// client, path := kvfactory.GetEtcdAndPath()
 	return NewSessionWithEtcd(ctx, "", nil, opts...)
 }
 
-// NewSessionWithEtcd is a helper to build a Session object.
-// ServerID, ServerName, Address, Exclusive will be assigned after Init().
-// metaRoot is a path in etcd to save session information.
-// etcdEndpoints is to init etcdCli when NewSession
+// NewSessionWithEtcd 是创建 Session 的辅助函数。
+// ServerID、ServerName、Address、Exclusive 等字段会在 Init 调用后赋值。
+// metaRoot 为在 etcd 中保存 Session 信息的路径前缀。
+// client 为外部传入的 etcd 客户端。
 func NewSessionWithEtcd(ctx context.Context, metaRoot string, client *clientv3.Client, opts ...SessionOption) *Session {
 	hostName, hostNameErr := os.Hostname()
 	if hostNameErr != nil {
@@ -270,16 +266,11 @@ func NewSessionWithEtcd(ctx context.Context, metaRoot string, client *clientv3.C
 			HostName: hostName,
 		},
 
-		// options
+		// options：Session 的默认配置。
 		sessionTTL:        defaultSessionTTL,
 		sessionRetryTimes: defaultSessionRetryTimes,
 		reuseNodeID:       true,
 	}
-
-	// integration test create cluster with different nodeId in one process
-	// if paramtable.Get().IntegrationTestCfg.IntegrationMode.GetAsBool() {
-	// 	session.reuseNodeID = false
-	// }
 
 	session.apply(opts...)
 
@@ -288,8 +279,8 @@ func NewSessionWithEtcd(ctx context.Context, metaRoot string, client *clientv3.C
 	return session
 }
 
-// Init will initialize base struct of the Session, including ServerName, ServerID,
-// Address, Exclusive. ServerID is obtained in getServerID.
+// Init 初始化 Session 的基础字段：ServerName、ServerID、Address、Exclusive 等。
+// 其中 ServerID 通过 getServerID 获取。
 func (s *Session) Init(serverName, address string, exclusive bool, triggerKill bool) {
 	s.ServerName = serverName
 	s.Address = address
@@ -311,12 +302,12 @@ func (s *Session) Init(serverName, address string, exclusive bool, triggerKill b
 	))
 }
 
-// String makes Session struct able to be logged by zap
+// String 返回 Session 的字符串表示形式，便于日志打印。
 func (s *Session) String() string {
 	return fmt.Sprintf("Session:<ServerID: %d, ServerName: %s, Version: %s>", s.ServerID, s.ServerName, s.Version.String())
 }
 
-// Register will process keepAliveResponse to keep alive with etcd.
+// Register 在 etcd 中注册服务并启动 keepalive 循环。
 func (s *Session) Register() {
 	err := s.registerService()
 	if err != nil {
@@ -335,7 +326,8 @@ func (s *Session) getServerID() (int64, error) {
 
 	log.Ctx(s.ctx).Debug("getServerID", zap.Bool("reuse", s.reuseNodeID))
 	if s.reuseNodeID {
-		// Notice, For standalone, all process share the same nodeID.
+		// 注意：在独立模式下，所有进程共享同一个 nodeID。
+		// 下面的逻辑当前被注释掉，仅保留作为设计参考。
 		// if nodeID := paramtable.GetNodeID(); nodeID != 0 {
 		// 	return nodeID, nil
 		// }
@@ -428,21 +420,12 @@ func (s *Session) getCompleteKey() string {
 	return path.Join(s.metaRoot, DefaultServiceRoot, key)
 }
 
-// registerService registers the service to etcd so that other services
-// can find that the service is online and issue subsequent operations
-// RegisterService will save a key-value in etcd
-// key: metaRootPath + "/services" + "/ServerName-ServerID"
-// value: json format
+// registerService 将服务注册到 etcd，使其他服务能发现该服务在线并进行后续操作。
+// 以键值形式写入 etcd：
+//   key: metaRootPath + "/services" + "/ServerName-ServerID"
+//   value: JSON 序列化后的 Session 信息。
 //
-//	{
-//	    ServerID   int64  `json:"ServerID,omitempty"`
-//	    ServerName string `json:"ServerName,omitempty"`
-//	    Address    string `json:"Address,omitempty"`
-//	    Exclusive  bool   `json:"Exclusive,omitempty"`
-//	}
-//
-// Exclusive means whether this service can exist two at the same time, if so,
-// it is false. Otherwise, set it to true.
+// Exclusive 表示是否允许同一服务名并存多个实例。
 func (s *Session) registerService() error {
 	if s.enableActiveStandBy {
 		s.updateStandby(true)
@@ -484,9 +467,8 @@ func (s *Session) registerService() error {
 	return retry.Do(s.ctx, registerFn, retry.Attempts(uint(s.sessionRetryTimes)))
 }
 
-// Handle restart is fast path to handle node restart.
-// This should be only a fast path for coordinator
-// If we find previous session have same address as current , simply purge the old one so the recovery can be much faster
+// handleRestart 是处理节点重启的快速路径。
+// 仅供协调组件使用：如果发现旧 Session 与当前节点地址相同，则删除旧 Session 以加快恢复。
 func (s *Session) handleRestart(key string) {
 	resp, err := s.etcdCli.Get(s.ctx, key)
 	log := log.With(zap.String("key", key))
@@ -514,12 +496,12 @@ func (s *Session) handleRestart(key string) {
 	}
 }
 
-// processKeepAliveResponse processes the response of etcd keepAlive interface
-// If keepAlive fails for unexpected error, it will send a signal to the channel.
+// processKeepAliveResponse 处理 etcd KeepAlive 的响应。
+// 若 KeepAlive 因异常失败，会尝试回收租约并退出循环。
 func (s *Session) processKeepAliveResponse() {
 	defer func() {
 		s.Logger().Info("keep alive loop exited successfully, try to revoke lease right away...")
-		// here the s.ctx may be already done, so we use context.Background() with a timeout to revoke the lease.
+		// 此时 s.ctx 可能已经结束，因此使用带超时的 context.Background() 来撤销租约。
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		if _, err := s.etcdCli.Revoke(ctx, *s.LeaseID); err != nil {
@@ -568,12 +550,12 @@ func (s *Session) processKeepAliveResponse() {
 			ch = newCH
 		}
 
-		// Block until the keep alive failure.
+		// 阻塞直到 KeepAlive 失败为止。
 		for range ch {
 		}
 
-		// receive a keep alive response, continue the opeartion.
-		// the keep alive channel may be closed because of network error, we should retry the keep alive.
+		// 接收到 KeepAlive 响应后继续循环。
+		// 通道可能因为网络错误被关闭，此时需要重新建立 KeepAlive。
 		ch = nil
 		nextKeepaliveInstant = time.Now().Add(time.Duration(s.sessionTTL) * time.Second)
 		lastErr = nil
@@ -581,7 +563,8 @@ func (s *Session) processKeepAliveResponse() {
 	}
 }
 
-// checkKeepaliveTTL checks the TTL of the lease and returns the error if the lease is not found or expired.
+// checkKeepaliveTTL 检查当前租约的 TTL。
+// 若租约不存在或已过期，则返回错误或直接退出进程。
 func (s *Session) checkKeepaliveTTL(nextKeepaliveInstant time.Time) error {
 	errSessionExpiredAtClientSide := errors.New("session expired at client side")
 	ctx, cancel := context.WithDeadlineCause(s.ctx, nextKeepaliveInstant, errSessionExpiredAtClientSide)
@@ -612,8 +595,8 @@ func (s *Session) startKeepAliveLoop() {
 	go s.processKeepAliveResponse()
 }
 
-// GetSessions will get all sessions registered in etcd.
-// Revision is returned for WatchServices to prevent key events from being missed.
+// GetSessions 获取所有已注册到 etcd 的 Session。
+// 返回的 Revision 可用于 WatchServices 以避免遗漏事件。
 func (s *Session) GetSessions(ctx context.Context, prefix string) (map[string]*Session, int64, error) {
 	res := make(map[string]*Session)
 	key := path.Join(s.metaRoot, DefaultServiceRoot, prefix)
@@ -638,8 +621,8 @@ func (s *Session) GetSessions(ctx context.Context, prefix string) (map[string]*S
 	return res, resp.Header.Revision, nil
 }
 
-// GetSessionsWithVersionRange will get all sessions with provided prefix and version range in etcd.
-// Revision is returned for WatchServices to prevent missing events.
+// GetSessionsWithVersionRange 获取指定版本范围内、指定前缀下的 Session。
+// 返回的 Revision 可用于 WatchServices 以避免遗漏事件。
 func (s *Session) GetSessionsWithVersionRange(prefix string, r semver.Range) (map[string]*Session, int64, error) {
 	log := log.Ctx(s.ctx)
 	res := make(map[string]*Session)
@@ -700,10 +683,8 @@ func (s *Session) GoingStop() error {
 	return nil
 }
 
-// SessionEvent indicates the changes of other servers.
-// if a server is up, EventType is SessAddEvent.
-// if a server is down, EventType is SessDelEvent.
-// Session Saves the changed server's information.
+// SessionEvent 表示其他服务的 Session 变更事件。
+// 服务上线时 EventType 为 SessionAddEvent，下线时为 SessionDelEvent，状态更新时为 SessionUpdateEvent。
 type SessionEvent struct {
 	EventType SessionEventType
 	Session   *Session
@@ -752,12 +733,12 @@ func (w *sessionWatcher) Stop() {
 	w.wg.Wait()
 }
 
-// EmptySessionWatcher returns a place holder for IndexNodeBinding mode datacoord
+// EmptySessionWatcher 返回一个空实现的 SessionWatcher，占位使用。
 func EmptySessionWatcher() SessionWatcher {
 	return emptySessionWatcher{}
 }
 
-// emptySessionWatcher is a place holder for IndexNodeBinding mode datacoord
+// emptySessionWatcher 为占位用的空实现。
 type emptySessionWatcher struct{}
 
 func (emptySessionWatcher) EventChannel() <-chan *SessionEvent {
@@ -766,14 +747,8 @@ func (emptySessionWatcher) EventChannel() <-chan *SessionEvent {
 
 func (emptySessionWatcher) Stop() {}
 
-// WatchServices watches the service's up and down in etcd, and sends event to
-// eventChannel.
-// prefix is a parameter to know which service to watch and can be obtained in
-// typeutil.type.go.
-// revision is a etcd reversion to prevent missing key events and can be obtained
-// in GetSessions.
-// If a server up, an event will be add to channel with eventType SessionAddType.
-// If a server down, an event will be add to channel with eventType SessionDelType.
+// WatchServices 监听指定前缀下服务在 etcd 中的上下线变化，并将事件发送到 eventChannel。
+// prefix 用于标识要监听的服务前缀；revision 用于避免事件遗漏。
 func (s *Session) WatchServices(prefix string, revision int64, rewatch Rewatch) (watcher SessionWatcher) {
 	ctx, cancel := context.WithCancel(s.ctx)
 	w := &sessionWatcher{
@@ -789,12 +764,8 @@ func (s *Session) WatchServices(prefix string, revision int64, rewatch Rewatch) 
 	return w
 }
 
-// WatchServicesWithVersionRange watches the service's up and down in etcd, and sends event to event Channel.
-// Acts like WatchServices but with extra version range check.
-// prefix is a parameter to know which service to watch and can be obtained in type util.type.go.
-// revision is a etcd reversion to prevent missing key events and can be obtained in GetSessions.
-// If a server up, an event will be add to channel with eventType SessionAddType.
-// If a server down, an event will be add to channel with eventType SessionDelType.
+// WatchServicesWithVersionRange 与 WatchServices 类似，但会额外校验 Session 的版本范围。
+// 仅在版本满足 r 时才会发送事件。
 func (s *Session) WatchServicesWithVersionRange(prefix string, r semver.Range, revision int64, rewatch Rewatch) (watcher SessionWatcher) {
 	ctx, cancel := context.WithCancel(s.ctx)
 	w := &sessionWatcher{
@@ -904,12 +875,12 @@ func (s *Session) Stop() {
 	s.wg.Wait()
 }
 
-// UpdateRegistered update the state of registered.
+// UpdateRegistered 更新当前 Session 的注册状态。
 func (s *Session) UpdateRegistered(b bool) {
 	s.registered.Store(b)
 }
 
-// Registered check if session was registered into etcd.
+// Registered 判断 Session 是否已经注册到 etcd。
 func (s *Session) Registered() bool {
 	b, ok := s.registered.Load().(bool)
 	if !ok {
@@ -938,17 +909,14 @@ func (s *Session) updateStandby(b bool) {
 	s.isStandby.Store(b)
 }
 
-// ProcessActiveStandBy is used by coordinators to do active-standby mechanism.
-// coordinator enabled active-standby will first call Register and then call ProcessActiveStandBy.
-// steps:
-// 1, Enter STANDBY mode
-// 2, Try to register to active key.
-// 3, If 2. return true, this service becomes ACTIVE. Exit STANDBY mode.
-// 4, If 2. return false, which means an ACTIVE service already exist.
+// ProcessActiveStandBy 由协调组件调用，用于实现 Active-Standby 机制。
+// 流程：
+//   1. 进入 STANDBY 模式；
+//   2. 尝试注册 active key；
+//   3. 若注册成功，则成为 ACTIVE，退出 STANDBY 模式；
+//   4. 若注册失败，说明已有 ACTIVE 节点，则监听 active key，一旦删除则回到步骤 2。
 //
-//	Start watching the active key. Whenever active key disappears, STANDBY node will go backup to 2.
-//
-// activateFunc is the function to re-active the service.
+// activateFunc 为切换为 ACTIVE 后的回调函数。
 func (s *Session) ProcessActiveStandBy(activateFunc func() error) error {
 	s.activeKey = path.Join(s.metaRoot, DefaultServiceRoot, s.ServerName)
 	log := log.Ctx(s.ctx)
@@ -1074,9 +1042,8 @@ func RemoveServerInfoFile(pid int) {
 	_ = os.Remove(fullPath)
 }
 
-// GetServerInfoFilePath get server info file path, eg: /tmp/zeus/server_id_123456789
-// Notes: this method will not support Windows OS
-// return file path
+// GetServerInfoFilePath 返回服务信息文件所在路径，例如：/tmp/zeus/server_id_123456789。
+// 注意：该方法暂不支持 Windows。
 func GetServerInfoFilePath(pid int) string {
 	tmpDir := "/tmp/zeus"
 	_ = os.Mkdir(tmpDir, os.ModePerm)

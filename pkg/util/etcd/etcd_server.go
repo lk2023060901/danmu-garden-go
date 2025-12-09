@@ -11,20 +11,20 @@ import (
 	"github.com/lk2023060901/danmu-garden-go/pkg/log"
 )
 
-// EtcdServer is the singleton of embedded etcd server
+// EtcdServer 是嵌入式 etcd 服务的单例实例。
 var (
 	initOnce   sync.Once
 	closeOnce  sync.Once
 	etcdServer *embed.Etcd
 )
 
-// GetEmbedEtcdClient returns client of embed etcd server
+// GetEmbedEtcdClient 返回嵌入式 etcd 服务对应的 v3 客户端。
 func GetEmbedEtcdClient() (*clientv3.Client, error) {
 	client := v3client.New(etcdServer.Server)
 	return client, nil
 }
 
-// InitEtcdServer initializes embedded etcd server singleton.
+// InitEtcdServer 初始化嵌入式 etcd 单例服务。
 func InitEtcdServer(
 	useEmbedEtcd bool,
 	configPath string,

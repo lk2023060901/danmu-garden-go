@@ -42,13 +42,13 @@ func (err ErrorType) String() string {
 	return ErrorTypeName[err]
 }
 
-// Define leaf errors here,
-// WARN: take care to add new error,
-// check whether you can use the errors below before adding a new one.
-// Name: Err + related prefix + error name
+// 在此处定义叶子错误。
+// WARN: 新增错误时需要特别小心，
+// 请优先考虑复用已有错误，再决定是否新增。
+// 命名规范：Err + 相关前缀 + 错误名称。
 var (
-	// Service related
-	ErrServiceNotReady             = newZeusError("service not ready", 1, true) // This indicates the service is still in init
+	// Service 相关错误。
+	ErrServiceNotReady             = newZeusError("service not ready", 1, true) // 表示服务仍在初始化中。
 	ErrServiceUnavailable          = newZeusError("service unavailable", 2, true)
 	ErrServiceMemoryLimitExceeded  = newZeusError("memory limit exceeded", 3, false)
 	ErrServiceTooManyRequests      = newZeusError("too many concurrent requests, queue is full", 4, true)
@@ -61,7 +61,7 @@ var (
 	ErrServiceTimeTickLongDelay    = newZeusError("time tick long delay", 11, false)
 	ErrServiceResourceInsufficient = newZeusError("service resource insufficient", 12, true)
 
-	// Collection related
+	// Collection 相关错误。
 	ErrCollectionNotFound                      = newZeusError("collection not found", 100, false)
 	ErrCollectionNotLoaded                     = newZeusError("collection not loaded", 101, false)
 	ErrCollectionNumLimitExceeded              = newZeusError("exceeded the limit number of collections", 102, false)
@@ -72,15 +72,15 @@ var (
 	ErrCollectionVectorClusteringKeyNotAllowed = newZeusError("vector clustering key not allowed", 107, false)
 	ErrCollectionReplicateMode                 = newZeusError("can't operate on the collection under standby mode", 108, false)
 	ErrCollectionSchemaMismatch                = newZeusError("collection schema mismatch", 109, false)
-	// Partition related
+	// Partition 相关错误。
 	ErrPartitionNotFound       = newZeusError("partition not found", 200, false)
 	ErrPartitionNotLoaded      = newZeusError("partition not loaded", 201, false)
 	ErrPartitionNotFullyLoaded = newZeusError("partition not fully loaded", 202, true)
 
-	// General capacity related
+	// 一般容量相关错误。
 	ErrGeneralCapacityExceeded = newZeusError("general capacity exceeded", 250, false)
 
-	// ResourceGroup related
+	// ResourceGroup 相关错误。
 	ErrResourceGroupNotFound      = newZeusError("resource group not found", 300, false)
 	ErrResourceGroupAlreadyExist  = newZeusError("resource group already exist, but create with different config", 301, false)
 	ErrResourceGroupReachLimit    = newZeusError("resource group num reach limit", 302, false)
@@ -89,27 +89,25 @@ var (
 	ErrResourceGroupNodeNotEnough    = newZeusError("resource group node not enough", 304, false)
 	ErrResourceGroupServiceAvailable = newZeusError("resource group service available", 305, true)
 
-	// Replica related
+	// Replica 相关错误。
 	ErrReplicaNotFound     = newZeusError("replica not found", 400, false)
 	ErrReplicaNotAvailable = newZeusError("replica not available", 401, false)
 
-	// Channel & Delegator related
+	// Channel 与 Delegator 相关错误。
 	ErrChannelNotFound         = newZeusError("channel not found", 500, false)
 	ErrChannelLack             = newZeusError("channel lacks", 501, false)
 	ErrChannelReduplicate      = newZeusError("channel reduplicates", 502, false)
 	ErrChannelNotAvailable     = newZeusError("channel not available", 503, false)
 	ErrChannelCPExceededMaxLag = newZeusError("channel checkpoint exceed max lag", 504, false)
 
-	// Segment related
+	// Segment 相关错误。
 	ErrSegmentNotFound    = newZeusError("segment not found", 600, false)
 	ErrSegmentNotLoaded   = newZeusError("segment not loaded", 601, false)
 	ErrSegmentLack        = newZeusError("segment lacks", 602, false)
 	ErrSegmentReduplicate = newZeusError("segment reduplicates", 603, false)
 	ErrSegmentLoadFailed  = newZeusError("segment load failed", 604, false)
-	// ErrSegmentRequestResourceFailed indicates the query node cannot load the segment
-	// due to resource exhaustion (Memory, Disk, or GPU). When this error is returned,
-	// the query coordinator will mark the node as resource exhausted and apply a
-	// penalty period during which the node won't receive new loading tasks.
+	// ErrSegmentRequestResourceFailed 表示查询节点在加载 Segment 时资源耗尽（内存、磁盘或 GPU）。
+	// 发生该错误时，上层协调者会将该节点标记为资源耗尽，并在一段惩罚期内不再下发新的加载任务。
 	ErrSegmentRequestResourceFailed = newZeusError("segment request resource failed", 605, false)
 
 	// Database related
@@ -125,43 +123,43 @@ var (
 	ErrNodeNotAvailable    = newZeusError("node not available", 905, false)
 	ErrNodeStateUnexpected = newZeusError("node state unexpected", 906, false)
 
-	// IO related
+	// IO 相关错误。
 	ErrIoKeyNotFound = newZeusError("key not found", 1000, false)
 	ErrIoFailed      = newZeusError("IO failed", 1001, false)
 	ErrIoUnexpectEOF = newZeusError("unexpected EOF", 1002, true)
 
-	// Parameter related
+	// 参数相关错误。
 	ErrParameterInvalid  = newZeusError("invalid parameter", 1100, false)
 	ErrParameterMissing  = newZeusError("missing parameter", 1101, false)
 	ErrParameterTooLarge = newZeusError("parameter too large", 1102, false)
 
-	// Metrics related
+	// 指标相关错误。
 	ErrMetricNotFound = newZeusError("metric not found", 1200, false)
 
-	// Message queue related
+	// 消息队列相关错误。
 	ErrMqTopicNotFound = newZeusError("topic not found", 1300, false)
 	ErrMqTopicNotEmpty = newZeusError("topic not empty", 1301, false)
 	ErrMqInternal      = newZeusError("message queue internal error", 1302, false)
 	ErrDenyProduceMsg  = newZeusError("deny to write the message to mq", 1303, false)
 
-	// Privilege related
-	// this operation is denied because the user not authorized, user need to login in first
+	// 权限相关错误。
+	// 当用户未认证时拒绝执行操作，用户需要先完成登录。
 	ErrPrivilegeNotAuthenticated = newZeusError("not authenticated", 1400, false)
-	// this operation is denied because the user has no permission to do this, user need higher privilege
+	// 当用户缺少足够权限时拒绝执行操作，用户需要更高权限。
 	ErrPrivilegeNotPermitted     = newZeusError("privilege not permitted", 1401, false)
 	ErrPrivilegeGroupInvalidName = newZeusError("invalid privilege group name", 1402, false)
 
-	// Alias related
+	// 别名相关错误。
 	ErrAliasNotFound               = newZeusError("alias not found", 1600, false)
 	ErrAliasCollectionNameConfilct = newZeusError("alias and collection name conflict", 1601, false)
 	ErrAliasAlreadyExist           = newZeusError("alias already exist", 1602, false)
 	ErrCollectionIDOfAliasNotFound = newZeusError("collection id of alias not found", 1603, false)
 
-	// field related
+	// 字段相关错误。
 	ErrFieldNotFound    = newZeusError("field not found", 1700, false)
 	ErrFieldInvalidName = newZeusError("field name invalid", 1701, false)
 
-	// high-level restful api related
+	// 高层 RESTful API 相关错误。
 	ErrNeedAuthenticate          = newZeusError("user hasn't authenticated", 1800, false)
 	ErrIncorrectParameterFormat  = newZeusError("can only accept json format request", 1801, false)
 	ErrMissingRequiredParameters = newZeusError("missing required parameters", 1802, false)
@@ -171,13 +169,13 @@ var (
 	ErrCheckPrimaryKey           = newZeusError("please check the primary key and its' type can only in [int, string]", 1806, false)
 	ErrHTTPRateLimit             = newZeusError("request is rejected by limiter", 1807, true)
 
-	// replicate related
+	// 副本同步相关错误。
 	ErrDenyReplicateMessage = newZeusError("deny to use the replicate message in the normal instance", 1900, false)
 	ErrInvalidMsgBytes      = newZeusError("invalid replicate msg bytes", 1901, false)
 	ErrNoAssignSegmentID    = newZeusError("no assign segment id", 1902, false)
 	ErrInvalidStreamObj     = newZeusError("invalid stream object", 1903, false)
 
-	// Segcore related
+	// Segcore 相关错误。
 	ErrSegcore                    = newZeusError("segcore error", 2000, false)
 	ErrSegcoreUnsupported         = newZeusError("segcore unsupported error", 2001, false)
 	ErrSegcorePretendFinished     = newZeusError("segcore pretend finished", 2002, false)
@@ -187,21 +185,21 @@ var (
 	ErrSegcoreGCPNativeError      = newZeusError("segcore GCP native error", 2040, false)      // throw from segcore.
 	KnowhereError                 = newZeusError("knowhere error", 2099, false)                // throw from segcore.
 
-	// Do NOT export this,
-	// never allow programmer using this, keep only for converting unknown error to zeusError
+	// 请勿导出该错误，
+	// 仅用于将未知错误转换为 zeusError，禁止在业务代码中直接使用。
 	errUnexpected = newZeusError("unexpected error", (1<<16)-1, false)
 
-	// import
+	// Import 相关错误。
 	ErrImportFailed = newZeusError("importing data failed", 2100, false)
 
-	// Search/Query related
+	// Search/Query 相关错误。
 	ErrInconsistentRequery = newZeusError("inconsistent requery result", 2200, true)
 
-	// Compaction
+	// Compaction 相关错误。
 	ErrCompactionReadDeltaLogErr                  = newZeusError("fail to read delta log", 2300, false)
 	ErrIllegalCompactionPlan                      = newZeusError("compaction plan illegal", 2301, false)
 	ErrCompactionPlanConflict                     = newZeusError("compaction plan conflict", 2302, false)
-	// ErrClusteringCompactionClusterNotSupport is removed as it was specific to Zeus cluster behavior.
+	// ErrClusteringCompactionClusterNotSupport 已移除，因为它属于 Zeus 集群特有行为。
 	ErrClusteringCompactionCollectionNotSupport   = newZeusError("collection not support clustering compaction", 2304, false)
 	ErrClusteringCompactionCollectionIsCompacting = newZeusError("collection is compacting", 2305, false)
 	ErrClusteringCompactionNotSupportVector       = newZeusError("vector field clustering compaction is not supported", 2306, false)
@@ -288,8 +286,8 @@ func (e multiErrors) Unwrap() error {
 	if len(e.errs) <= 1 {
 		return nil
 	}
-	// To make merr work for multi errors,
-	// we need cause of multi errors, which defined as the last error
+	// 为了让 merr 能正确处理多重错误，
+	// 需要返回多重错误的“根因”，这里约定为最后一个错误。
 	if len(e.errs) == 2 {
 		return e.errs[1]
 	}

@@ -33,46 +33,46 @@ var (
 		Namespace: zeusNamespace,
 		Subsystem: loggingMetricSubsystem,
 		Name:      "pending_write_length",
-		Help:      "The length of pending writes in the logging buffer",
+		Help:      "当前日志缓冲区中待写入日志的数量",
 	})
 
 	LoggingPendingWriteBytes = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: zeusNamespace,
 		Subsystem: loggingMetricSubsystem,
 		Name:      "pending_write_bytes",
-		Help:      "The total bytes of pending writes in the logging buffer",
+		Help:      "当前日志缓冲区中待写入日志的总字节数",
 	})
 
 	LoggingTruncatedWrites = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: zeusNamespace,
 		Subsystem: loggingMetricSubsystem,
 		Name:      "truncated_writes",
-		Help:      "The number of truncated writes due to exceeding the max bytes per log",
+		Help:      "单条日志超过最大字节数而被截断的次数",
 	})
 
 	LoggingTruncatedWriteBytes = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: zeusNamespace,
 		Subsystem: loggingMetricSubsystem,
 		Name:      "truncated_write_bytes",
-		Help:      "The total bytes of truncated writes due to exceeding the max bytes per log",
+		Help:      "因单条日志超过最大字节数而被截断的总字节数",
 	})
 
 	LoggingDroppedWrites = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: zeusNamespace,
 		Subsystem: loggingMetricSubsystem,
 		Name:      "dropped_writes",
-		Help:      "The number of dropped writes due to buffer full or write timeout",
+		Help:      "由于缓冲区已满或写入超时而被丢弃的日志条数",
 	})
 
 	LoggingIOFailure = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: zeusNamespace,
 		Subsystem: loggingMetricSubsystem,
 		Name:      "io_failures",
-		Help:      "The number of IO failures due to underlying write syncer is blocked or write timeout",
+		Help:      "由于底层写入阻塞或写入超时导致的 IO 失败次数",
 	})
 )
 
-// RegisterLoggingMetrics registers logging metrics
+// RegisterLoggingMetrics 将日志相关的指标注册到 Prometheus Registry 中。
 func RegisterLoggingMetrics(registry *prometheus.Registry) {
 	LoggingMetricsRegisterOnce.Do(func() {
 		registry.MustRegister(LoggingPendingWriteLength)

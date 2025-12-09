@@ -40,7 +40,7 @@ import (
 
 type ClientOption func(*clientv3.Config)
 
-// WithDialKeepAlive configures gRPC keepalive and autosync behaviors for the etcd client.
+// WithDialKeepAlive 为 etcd 客户端配置 gRPC 保活与自动同步行为。
 func WithDialKeepAlive(dialKeepAliveTime, dialKeepAliveTimeout time.Duration) ClientOption {
 	return func(cfg *clientv3.Config) {
 		if dialKeepAliveTime > 0 {
@@ -60,8 +60,8 @@ func applyClientOptions(cfg *clientv3.Config, opts ...ClientOption) {
 	}
 }
 
-// GetEtcdClient returns etcd client
-// should only used for test
+// GetEtcdClient 返回一个 etcd 客户端实例。
+// 仅用于测试场景。
 func GetEtcdClient(
 	useEmbedEtcd bool,
 	useSSL bool,
@@ -86,7 +86,7 @@ func GetEtcdClient(
 	return GetRemoteEtcdClient(endpoints, opts...)
 }
 
-// GetRemoteEtcdClient returns client of remote etcd by given endpoints
+// GetRemoteEtcdClient 根据给定的 endpoints 返回远程 etcd 客户端。
 func GetRemoteEtcdClient(endpoints []string, opts ...ClientOption) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
 		Endpoints:   endpoints,
@@ -195,7 +195,7 @@ func min(a, b int) int {
 	return b
 }
 
-// SaveByBatchWithLimit is SaveByBatch with customized limit.
+// SaveByBatchWithLimit 是带有自定义批大小限制的批量保存工具方法。
 func SaveByBatchWithLimit(kvs map[string]string, limit int, op func(partialKvs map[string]string) error) error {
 	if len(kvs) == 0 {
 		return nil
@@ -253,8 +253,8 @@ func buildKvGroup(keys, values []string) (map[string]string, error) {
 	return ret, nil
 }
 
-// StartTestEmbedEtcdServer returns a newly created embed etcd server.
-// ### USED FOR UNIT TEST ONLY ###
+// StartTestEmbedEtcdServer 创建并返回一个新的嵌入式 etcd 服务实例。
+// 仅用于单元测试。
 func StartTestEmbedEtcdServer() (*embed.Etcd, string, error) {
 	dir, err := os.MkdirTemp(os.TempDir(), "zeus_ut")
 	if err != nil {
@@ -267,7 +267,7 @@ func StartTestEmbedEtcdServer() (*embed.Etcd, string, error) {
 	return server, dir, err
 }
 
-// GetEmbedEtcdEndpoints returns etcd listener address for endpoint config.
+// GetEmbedEtcdEndpoints 返回嵌入式 etcd 的监听地址列表，用于 endpoint 配置。
 func GetEmbedEtcdEndpoints(server *embed.Etcd) []string {
 	addrs := make([]string, 0, len(server.Clients))
 	for _, l := range server.Clients {

@@ -6,22 +6,21 @@ import (
 	spfviper "github.com/spf13/viper"
 )
 
-// Config wraps a spf13/viper instance and provides
-// a narrow API for YAML/JSON configuration loading.
+// Config 封装 spf13/viper 实例，对外提供精简的 YAML/JSON 配置加载接口。
 type Config struct {
 	v *spfviper.Viper
 }
 
-// New creates an empty Config.
-// Call LoadFile before using Unmarshal/UnmarshalKey.
+// New 创建一个空的 Config。
+// 在调用 Unmarshal/UnmarshalKey 之前需要先调用 LoadFile 加载配置文件。
 func New() *Config {
 	return &Config{
 		v: spfviper.New(),
 	}
 }
 
-// LoadFile loads a YAML or JSON config file into the Config.
-// The file type is inferred from the extension (.yaml/.yml/.json).
+// LoadFile 将 YAML 或 JSON 配置文件加载到 Config 中。
+// 文件类型通过扩展名（.yaml/.yml/.json）推断。
 func (c *Config) LoadFile(path string) error {
 	if c.v == nil {
 		c.v = spfviper.New()
@@ -35,14 +34,14 @@ func (c *Config) LoadFile(path string) error {
 	case ".json":
 		c.v.SetConfigType("json")
 	default:
-		// let viper infer the type or return a clear error on read
+		// 让 viper 自行推断类型，或在读取时返回清晰的错误信息。
 	}
 
 	return c.v.ReadInConfig()
 }
 
-// Unmarshal unmarshals the entire config into dst.
-// dst should be a pointer to a struct or map.
+// Unmarshal 将完整配置反序列化到 dst。
+// dst 应为结构体或 map 的指针。
 func (c *Config) Unmarshal(dst interface{}) error {
 	if c.v == nil {
 		return nil
@@ -50,12 +49,11 @@ func (c *Config) Unmarshal(dst interface{}) error {
 	return c.v.Unmarshal(dst)
 }
 
-// UnmarshalKey unmarshals a specific key subtree into dst.
-// dst should be a pointer to a struct or map.
+// UnmarshalKey 将指定 key 对应的子配置反序列化到 dst。
+// dst 应为结构体或 map 的指针。
 func (c *Config) UnmarshalKey(key string, dst interface{}) error {
 	if c.v == nil {
 		return nil
 	}
 	return c.v.UnmarshalKey(key, dst)
 }
-

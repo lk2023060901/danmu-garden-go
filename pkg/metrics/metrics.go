@@ -24,10 +24,10 @@ import (
 )
 
 const (
-	// zeusNamespace is the Prometheus namespace for all metrics in this project.
+	// zeusNamespace 是当前项目所有 Prometheus 指标使用的命名空间。
 	zeusNamespace = "zeus"
 
-	// Labels currently in use.
+	// 以下为当前使用的通用标签名。
 	nodeIDLabelName   = "node_id"
 	roleNameLabelName = "role_name"
 
@@ -38,15 +38,16 @@ const (
 )
 
 var (
-	// buckets involves durations in milliseconds,
+	// buckets 为请求耗时直方图的桶划分，单位为毫秒。
+	// 实际桶分布为：
 	// [1 2 4 8 16 32 64 128 256 512 1024 2048 4096 8192 16384 32768 65536 1.31072e+05]
 	buckets = prometheus.ExponentialBuckets(1, 2, 18)
 
-	// longTaskBuckets provides long task duration in milliseconds
-	longTaskBuckets = []float64{1, 100, 500, 1000, 5000, 10000, 20000, 50000, 100000, 250000, 500000, 1000000, 3600000, 5000000, 10000000} // unit milliseconds
+	// longTaskBuckets 为长耗时任务的桶划分，单位为毫秒。
+	longTaskBuckets = []float64{1, 100, 500, 1000, 5000, 10000, 20000, 50000, 100000, 250000, 500000, 1000000, 3600000, 5000000, 10000000} // 单位：毫秒
 
-	// size provides size in byte
-	sizeBuckets = []float64{10000, 100000, 1000000, 100000000, 500000000, 1024000000, 2048000000, 4096000000, 10000000000, 50000000000} // unit byte
+	// sizeBuckets 为数据大小的桶划分，单位为字节。
+	sizeBuckets = []float64{10000, 100000, 1000000, 100000000, 500000000, 1024000000, 2048000000, 4096000000, 10000000000, 50000000000} // 单位：字节
 
 	NumNodes = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -70,8 +71,8 @@ var (
 	metricRegisterer prometheus.Registerer
 )
 
-// GetRegisterer returns the global prometheus registerer
-// metricsRegistry must be call after Register is called or no Register is called.
+// GetRegisterer 返回全局 Prometheus Registerer。
+// 如果尚未通过 Register 显式设置，则返回 prometheus.DefaultRegisterer。
 func GetRegisterer() prometheus.Registerer {
 	if metricRegisterer == nil {
 		return prometheus.DefaultRegisterer
@@ -79,8 +80,8 @@ func GetRegisterer() prometheus.Registerer {
 	return metricRegisterer
 }
 
-// Register serves prometheus http service
-// Should be called by init function.
+// Register 注册当前定义的所有指标。
+// 通常应在 init 函数中调用。
 func Register(r prometheus.Registerer) {
 	r.MustRegister(NumNodes)
 	r.MustRegister(LockCosts)

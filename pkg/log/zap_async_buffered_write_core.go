@@ -27,10 +27,9 @@ import (
 	"github.com/lk2023060901/danmu-garden-go/pkg/util/syncutil"
 )
 
-// asyncTextIOCore is a wrapper around the textIOCore that writes the logs to the underlying buffered write syncer.
 var _ zapcore.Core = (*asyncTextIOCore)(nil)
 
-// NewAsyncTextIOCore creates a new async text IO core.
+// NewAsyncTextIOCore 创建一个异步文本 IO Core。
 func NewAsyncTextIOCore(cfg *Config, ws zapcore.WriteSyncer, enab zapcore.LevelEnabler) *asyncTextIOCore {
 	enc := newZapTextEncoder(cfg)
 	bws := &zapcore.BufferedWriteSyncer{
@@ -54,27 +53,27 @@ func NewAsyncTextIOCore(cfg *Config, ws zapcore.WriteSyncer, enab zapcore.LevelE
 	return asyncTextIOCore
 }
 
-// asyncTextIOCore is a wrapper around the textIOCore that writes the logs to the underlying buffered write syncer.
+// asyncTextIOCore 是对 textIOCore 的包装，通过带缓冲的 WriteSyncer 异步写入日志。
 type asyncTextIOCore struct {
 	zapcore.LevelEnabler
 
 	notifier            *syncutil.AsyncTaskNotifier[struct{}]
 	enc                 zapcore.Encoder
 	bws                 *zapcore.BufferedWriteSyncer
-	pending             chan *entryItem // the incoming new write requests
+	pending             chan *entryItem // 新进入的写请求队列。
 	writeDroppedTimeout time.Duration
 	nonDroppableLevel   zapcore.Level
 	stopTimeout         time.Duration
 	maxBytesPerLog      int
 }
 
-// entryItem is the item to write to the underlying buffered write syncer.
+// entryItem 表示待写入底层缓冲 WriteSyncer 的日志条目。
 type entryItem struct {
 	buf   *buffer.Buffer
 	level zapcore.Level
 }
 
-// With returns a copy of the Core with the given fields added.
+// With 返回一个携带额外字段的 Core 副本。
 func (s *asyncTextIOCore) With(fields []zapcore.Field) zapcore.Core {
 	enc := s.enc.Clone()
 	switch e := enc.(type) {
@@ -99,7 +98,7 @@ func (s *asyncTextIOCore) With(fields []zapcore.Field) zapcore.Core {
 	}
 }
 
-// Check checks if the entry is enabled by the level enabler.
+// Check 检查当前日志条目是否满足 LevelEnabler 要求。
 func (s *asyncTextIOCore) Check(ent zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
 	if s.Enabled(ent.Level) {
 		return ce.AddCore(ent, s)
@@ -107,9 +106,8 @@ func (s *asyncTextIOCore) Check(ent zapcore.Entry, ce *zapcore.CheckedEntry) *za
 	return ce
 }
 
-// Write writes the underlying buffered write syncer and buffers the writes in a channel.
-// asyncTextIOCore doesn't promise the write operation is done.
-// the write operation will be dropped if the buffer is full or the underlying buffered write syncer is blocked.
+// Write 将日志编码后写入异步缓冲队列。
+// asyncTextIOCore 不保证写操作立即完成；当缓冲区已满或底层写入阻塞时，写操作可能被丢弃。
 func (s *asyncTextIOCore) Write(ent zapcore.Entry, fields []zapcore.Field) error {
 	buf, err := s.enc.EncodeEntry(ent, fields)
 	if err != nil {
@@ -140,12 +138,12 @@ func (s *asyncTextIOCore) Write(ent zapcore.Entry, fields []zapcore.Field) error
 	return nil
 }
 
-// Sync syncs the underlying buffered write syncer.
+// Sync 为兼容接口，异步 Core 不执行额外同步。
 func (s *asyncTextIOCore) Sync() error {
 	return nil
 }
 
-// background is the background goroutine to write the logs to the underlying buffered write syncer.
+// background 为后台协程，从 pending 队列中消费日志并写入底层缓冲 WriteSyncer。
 func (s *asyncTextIOCore) background() {
 	defer func() {
 		s.flushPendingWriteWithTimeout()
@@ -162,7 +160,7 @@ func (s *asyncTextIOCore) background() {
 	}
 }
 
-// consumeEntry write the entry to the underlying buffered write syncer and free the buffer.
+// consumeEntry 将单条日志写入底层缓冲 WriteSyncer，并更新指标与释放缓冲。
 func (s *asyncTextIOCore) consumeEntry(ent *entryItem) {
 	length := ent.buf.Len()
 	metrics.LoggingPendingWriteLength.Dec()
@@ -177,9 +175,8 @@ func (s *asyncTextIOCore) consumeEntry(ent *entryItem) {
 	}
 }
 
-// getWriteBytes gets the bytes to write to the underlying buffered write syncer.
-// if the length of the write exceeds the max bytes per log, it will truncate the write and return the truncated bytes.
-// otherwise, it will return the original bytes.
+// getWriteBytes 计算写入底层缓冲 WriteSyncer 的字节切片。
+// 若写入长度超过单条日志的最大限制，则会截断并返回截断后的字节。
 func (s *asyncTextIOCore) getWriteBytes(ent *entryItem) []byte {
 	length := ent.buf.Len()
 	writes := ent.buf.Bytes()

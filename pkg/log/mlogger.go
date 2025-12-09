@@ -24,13 +24,15 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// MLogger is a wrapper type of zap.Logger.
+// MLogger 是 zap.Logger 的封装类型。
+// 在原有 Logger 的基础上，增加了按速率分组的限流日志能力。
 type MLogger struct {
 	*zap.Logger
 	rl atomic.Value // *utils.ReconfigurableRateLimiter
 }
 
-// With encapsulates zap.Logger With method to return MLogger instance.
+// With 封装 zap.Logger 的 With 方法，并返回新的 MLogger 实例。
+// 新实例携带额外的字段，不影响原 Logger。
 func (l *MLogger) With(fields ...zap.Field) *MLogger {
 	nl := &MLogger{
 		Logger: l.Logger.WithOptions(zap.WrapCore(func(core zapcore.Core) zapcore.Core {
@@ -40,7 +42,8 @@ func (l *MLogger) With(fields ...zap.Field) *MLogger {
 	return nl
 }
 
-// WithRateGroup uses named RateLimiter for this logger.
+// WithRateGroup 为当前 Logger 绑定一个命名 RateLimiter。
+// 不同 groupName 可以复用或独立配置限流参数。
 func (l *MLogger) WithRateGroup(groupName string, creditPerSecond, maxBalance float64) *MLogger {
 	rl := utils.NewRateLimiter(creditPerSecond, maxBalance)
 	actual, loaded := _namedRateLimiters.LoadOrStore(groupName, rl)
@@ -68,7 +71,8 @@ func (l *MLogger) r() RateLimiter {
 	return R()
 }
 
-// RatedDebug calls log.Debug with RateLimiter.
+// RatedDebug 在 Debug 级别输出限流日志。
+// 当限流通过时调用 Debug，并返回 true；否则不输出日志并返回 false。
 func (l *MLogger) RatedDebug(cost float64, msg string, fields ...zap.Field) bool {
 	if l.r().CheckCredit(cost) {
 		l.WithOptions(zap.AddCallerSkip(1)).Debug(msg, fields...)
@@ -77,7 +81,8 @@ func (l *MLogger) RatedDebug(cost float64, msg string, fields ...zap.Field) bool
 	return false
 }
 
-// RatedInfo calls log.Info with RateLimiter.
+// RatedInfo 在 Info 级别输出限流日志。
+// 当限流通过时调用 Info，并返回 true；否则不输出日志并返回 false。
 func (l *MLogger) RatedInfo(cost float64, msg string, fields ...zap.Field) bool {
 	if l.r().CheckCredit(cost) {
 		l.WithOptions(zap.AddCallerSkip(1)).Info(msg, fields...)
@@ -86,7 +91,8 @@ func (l *MLogger) RatedInfo(cost float64, msg string, fields ...zap.Field) bool 
 	return false
 }
 
-// RatedWarn calls log.Warn with RateLimiter.
+// RatedWarn 在 Warn 级别输出限流日志。
+// 当限流通过时调用 Warn，并返回 true；否则不输出日志并返回 false。
 func (l *MLogger) RatedWarn(cost float64, msg string, fields ...zap.Field) bool {
 	if l.r().CheckCredit(cost) {
 		l.WithOptions(zap.AddCallerSkip(1)).Warn(msg, fields...)

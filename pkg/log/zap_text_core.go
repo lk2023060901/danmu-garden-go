@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// NewTextCore creates a Core that writes logs to a WriteSyncer.
+// NewTextCore 创建一个将日志写入指定 WriteSyncer 的 Core。
 func NewTextCore(enc zapcore.Encoder, ws zapcore.WriteSyncer, enab zapcore.LevelEnabler) zapcore.Core {
 	return &textIOCore{
 		LevelEnabler: enab,
@@ -28,8 +28,8 @@ func NewTextCore(enc zapcore.Encoder, ws zapcore.WriteSyncer, enab zapcore.Level
 	}
 }
 
-// textIOCore is a copy of zapcore.ioCore that only accept *textEncoder
-// it can be removed after https://github.com/uber-go/zap/pull/685 be merged
+// textIOCore 是 zapcore.ioCore 的简化拷贝，仅接受 *textEncoder。
+// 在 https://github.com/uber-go/zap/pull/685 合并后可以考虑移除。
 type textIOCore struct {
 	zapcore.LevelEnabler
 	enc zapcore.Encoder
@@ -38,7 +38,8 @@ type textIOCore struct {
 
 func (c *textIOCore) With(fields []zapcore.Field) zapcore.Core {
 	clone := c.clone()
-	// it's different to ioCore, here call textEncoder#addFields to fix https://github.com/pingcap/log/issues/3
+	// 与 zapcore.ioCore 不同，这里调用 textEncoder#addFields，
+	// 用于修复 https://github.com/pingcap/log/issues/3 中的问题。
 	switch e := clone.enc.(type) {
 	case *textEncoder:
 		e.addFields(fields)
@@ -70,8 +71,8 @@ func (c *textIOCore) Write(ent zapcore.Entry, fields []zapcore.Field) error {
 		return err
 	}
 	if ent.Level > zapcore.ErrorLevel {
-		// Since we may be crashing the program, sync the output. Ignore Sync
-		// errors, pending a clean solution to issue https://github.com/uber-go/zap/issues/370.
+		// 有可能即将导致程序崩溃，此处强制同步输出。
+		// Sync 错误暂时忽略，后续可参考 https://github.com/uber-go/zap/issues/370 进行完善。
 		c.Sync()
 	}
 	return nil

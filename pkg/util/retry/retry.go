@@ -33,9 +33,9 @@ func getCaller(skip int) string {
 	return file + ":" + strconv.Itoa(line)
 }
 
-// Do will run function with retry mechanism.
-// fn is the func to run.
-// Option can control the retry times and timeout.
+// Do 使用重试机制执行指定函数。
+// fn 为待执行的函数。
+// opts 用于控制最大重试次数、初始休眠时间等行为。
 func Do(ctx context.Context, fn func() error, opts ...Option) error {
 	if !funcutil.CheckCtxValid(ctx) {
 		return ctx.Err()
@@ -125,9 +125,9 @@ func Do(ctx context.Context, fn func() error, opts ...Option) error {
 	return lastErr
 }
 
-// Do will run function with retry mechanism.
-// fn is the func to run, return err and shouldRetry flag.
-// Option can control the retry times and timeout.
+// Handle 使用重试机制执行指定函数。
+// fn 为待执行的函数，返回 shouldRetry 标记和错误。
+// opts 用于控制最大重试次数、初始休眠时间等行为。
 func Handle(ctx context.Context, fn func() (bool, error), opts ...Option) error {
 	if !funcutil.CheckCtxValid(ctx) {
 		return ctx.Err()
@@ -210,16 +210,15 @@ func Handle(ctx context.Context, fn func() (bool, error), opts ...Option) error 
 	return lastErr
 }
 
-// errUnrecoverable is error instance for unrecoverable.
+// errUnrecoverable 表示不可恢复错误的标记实例。
 var errUnrecoverable = errors.New("unrecoverable error")
 
-// Unrecoverable method wrap an error to unrecoverableError. This will make retry
-// quick return.
+// Unrecoverable 将错误包装为不可恢复错误，使重试逻辑能够快速返回。
 func Unrecoverable(err error) error {
 	return merr.Combine(err, errUnrecoverable)
 }
 
-// IsRecoverable is used to judge whether the error is wrapped by unrecoverableError.
+// IsRecoverable 判断给定错误是否为“可恢复”错误。
 func IsRecoverable(err error) bool {
 	return !errors.Is(err, errUnrecoverable)
 }

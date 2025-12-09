@@ -23,8 +23,8 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// lazyWithCore wraps zapcore.Core with lazy initialization.
-// Copied from https://github.com/uber-go/zap/issues/1426 to avoid data race.
+// lazyWithCore 对 zapcore.Core 进行懒初始化封装。
+// 实现思路来自 https://github.com/uber-go/zap/issues/1426，用于避免数据竞争。
 type lazyWithCore struct {
 	corePtr atomic.Pointer[zapcore.Core]
 	once    sync.Once
@@ -33,6 +33,7 @@ type lazyWithCore struct {
 
 var _ zapcore.Core = (*lazyWithCore)(nil)
 
+// NewLazyWith 使用给定 core 和字段创建一个支持懒初始化的 Core。
 func NewLazyWith(core zapcore.Core, fields []zapcore.Field) zapcore.Core {
 	d := lazyWithCore{fields: fields}
 	d.corePtr.Store(&core)
@@ -49,16 +50,16 @@ func (d *lazyWithCore) initOnce() zapcore.Core {
 }
 
 func (d *lazyWithCore) Enabled(level zapcore.Level) bool {
-	// Init not needed
+	// 此处无需初始化，因为仅读取当前 core 的状态。
 	return (*d.corePtr.Load()).Enabled(level)
 }
 
 func (d *lazyWithCore) Sync() error {
-	// Init needed
+	// Sync 前需要确保 core 已经初始化。
 	return d.initOnce().Sync()
 }
 
-// Write implements zapcore.Core.
+// Write 实现 zapcore.Core 的 Write 接口。
 func (d *lazyWithCore) Write(entry zapcore.Entry, fields []zapcore.Field) error {
 	return (*d.corePtr.Load()).Write(entry, fields)
 }

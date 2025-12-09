@@ -31,8 +31,8 @@ import (
 
 const InputErrorFlagKey string = "is_input_error"
 
-// Code returns the error code of the given error,
-// WARN: DO NOT use this for now
+// Code 返回给定错误对应的错误码。
+// WARN: 当前阶段请勿在新代码中直接使用该方法。
 func Code(err error) int32 {
 	if err == nil {
 		return 0
@@ -66,8 +66,8 @@ func IsCanceledOrTimeout(err error) bool {
 	return errors.IsAny(err, context.Canceled, context.DeadlineExceeded)
 }
 
-// Status returns a protobuf Status according to the given err,
-// returns a success Status if err is nil.
+// Status 根据给定错误构造 protobuf Status。
+// 当 err 为空时，返回一个表示成功的 Status。
 func Status(err error) *commonpb.Status {
 	if err == nil {
 		return &commonpb.Status{}
@@ -183,7 +183,7 @@ func GetErrorType(err error) ErrorType {
 	return SystemError
 }
 
-// Service related
+// Service 相关错误封装。
 func WrapErrServiceNotReady(role string, sessionID int64, state string, msg ...string) error {
 	err := wrapFieldsWithDesc(ErrServiceNotReady,
 		state,
@@ -274,7 +274,7 @@ func WrapErrServiceUnimplemented(grpcErr error) error {
 	return wrapFieldsWithDesc(ErrServiceUnimplemented, grpcErr.Error())
 }
 
-// database related
+// Database 相关错误封装。
 func WrapErrDatabaseNotFound(database any, msg ...string) error {
 	err := wrapFields(ErrDatabaseNotFound, value("database", database))
 	if len(msg) > 0 {
@@ -307,7 +307,7 @@ func WrapErrPrivilegeGroupNameInvalid(privilegeGroup any, msg ...string) error {
 	return err
 }
 
-// Collection related
+// Collection 相关错误封装。
 func WrapErrCollectionNotFound(collection any, msg ...string) error {
 	err := wrapFields(ErrCollectionNotFound, value("collection", collection))
 	if len(msg) > 0 {
@@ -377,7 +377,7 @@ func WrapErrCollectionIllegalSchema(collection string, msgAndArgs ...any) error 
 	return err
 }
 
-// WrapErrCollectionOnRecovering wraps ErrCollectionOnRecovering with collection
+// WrapErrCollectionOnRecovering 使用 collection 参数包装 ErrCollectionOnRecovering。
 func WrapErrCollectionOnRecovering(collection any, msgAndArgs ...any) error {
 	err := wrapFields(ErrCollectionOnRecovering, value("collection", collection))
 	if len(msgAndArgs) > 0 {
@@ -387,7 +387,7 @@ func WrapErrCollectionOnRecovering(collection any, msgAndArgs ...any) error {
 	return err
 }
 
-// WrapErrCollectionVectorClusteringKeyNotAllowed wraps ErrCollectionVectorClusteringKeyNotAllowed with collection
+// WrapErrCollectionVectorClusteringKeyNotAllowed 使用 collection 参数包装 ErrCollectionVectorClusteringKeyNotAllowed。
 func WrapErrCollectionVectorClusteringKeyNotAllowed(collection any, msgAndArgs ...any) error {
 	err := wrapFields(ErrCollectionVectorClusteringKeyNotAllowed, value("collection", collection))
 	if len(msgAndArgs) > 0 {
@@ -490,7 +490,7 @@ func WrapErrResourceGroupAlreadyExist(rg any, msg ...string) error {
 	return err
 }
 
-// WrapErrResourceGroupReachLimit wraps ErrResourceGroupReachLimit with resource group and limit
+// WrapErrResourceGroupReachLimit 使用资源组与限制信息包装 ErrResourceGroupReachLimit。
 func WrapErrResourceGroupReachLimit(rg any, limit any, msg ...string) error {
 	err := wrapFields(ErrResourceGroupReachLimit, value("rg", rg), value("limit", limit))
 	if len(msg) > 0 {
@@ -499,7 +499,7 @@ func WrapErrResourceGroupReachLimit(rg any, limit any, msg ...string) error {
 	return err
 }
 
-// WrapErrResourceGroupIllegalConfig wraps ErrResourceGroupIllegalConfig with resource group
+// WrapErrResourceGroupIllegalConfig 使用资源组与配置包装 ErrResourceGroupIllegalConfig。
 func WrapErrResourceGroupIllegalConfig(rg any, cfg any, msg ...string) error {
 	err := wrapFields(ErrResourceGroupIllegalConfig, value("rg", rg), value("config", cfg))
 	if len(msg) > 0 {
@@ -508,7 +508,7 @@ func WrapErrResourceGroupIllegalConfig(rg any, cfg any, msg ...string) error {
 	return err
 }
 
-// WrapErrStreamingNodeNotEnough make a streaming node is not enough error
+// WrapErrStreamingNodeNotEnough 构造“流式节点数量不足”的错误。
 func WrapErrStreamingNodeNotEnough(current int, expected int, msg ...string) error {
 	err := wrapFields(ErrServiceResourceInsufficient, value("currentStreamingNode", current), value("expectedStreamingNode", expected))
 	if len(msg) > 0 {
@@ -518,7 +518,7 @@ func WrapErrStreamingNodeNotEnough(current int, expected int, msg ...string) err
 }
 
 // go:deprecated
-// WrapErrResourceGroupNodeNotEnough wraps ErrResourceGroupNodeNotEnough with resource group
+// WrapErrResourceGroupNodeNotEnough 使用资源组信息包装 ErrResourceGroupNodeNotEnough。
 func WrapErrResourceGroupNodeNotEnough(rg any, current any, expected any, msg ...string) error {
 	err := wrapFields(ErrResourceGroupNodeNotEnough, value("rg", rg), value("currentNodeNum", current), value("expectedNodeNum", expected))
 	if len(msg) > 0 {
@@ -527,7 +527,7 @@ func WrapErrResourceGroupNodeNotEnough(rg any, current any, expected any, msg ..
 	return err
 }
 
-// WrapErrResourceGroupServiceAvailable wraps ErrResourceGroupServiceAvailable with resource group
+// WrapErrResourceGroupServiceAvailable 使用资源组信息包装 ErrResourceGroupServiceAvailable。
 func WrapErrResourceGroupServiceAvailable(msg ...string) error {
 	err := wrapFields(ErrResourceGroupServiceAvailable)
 	if len(msg) > 0 {
@@ -536,7 +536,7 @@ func WrapErrResourceGroupServiceAvailable(msg ...string) error {
 	return err
 }
 
-// Replica related
+// Replica 相关错误封装。
 func WrapErrReplicaNotFound(id int64, msg ...string) error {
 	err := wrapFields(ErrReplicaNotFound, value("replica", id))
 	if len(msg) > 0 {
@@ -553,7 +553,7 @@ func WrapErrReplicaNotAvailable(id int64, msg ...string) error {
 	return err
 }
 
-// Channel related
+// Channel 相关错误封装。
 
 func warpChannelErr(mErr zeusError, name string, msg ...string) error {
 	err := wrapFields(mErr, value("channel", name))
@@ -583,7 +583,7 @@ func WrapErrChannelNotAvailable(name string, msg ...string) error {
 	return warpChannelErr(ErrChannelNotAvailable, name, msg...)
 }
 
-// Segment related
+// Segment 相关错误封装。
 func WrapErrSegmentNotFound(id int64, msg ...string) error {
 	err := wrapFields(ErrSegmentNotFound, value("segment", id))
 	if len(msg) > 0 {
@@ -608,10 +608,9 @@ func WrapErrSegmentLoadFailed(id int64, msg ...string) error {
 	return err
 }
 
-// WrapErrSegmentRequestResourceFailed creates a resource exhaustion error for segment loading.
-// resourceType should be one of: "Memory", "Disk", "GPU".
-// This error triggers the query coordinator to mark the node as resource exhausted,
-// applying a penalty period controlled by queryCoord.resourceExhaustionPenaltyDuration.
+// WrapErrSegmentRequestResourceFailed 构造 Segment 加载时资源耗尽的错误。
+// resourceType 应为 "Memory"、"Disk"、"GPU" 之一。
+// 该错误通常会触发上层组件将节点标记为资源耗尽，并施加一段惩罚期。
 func WrapErrSegmentRequestResourceFailed(
 	resourceType string,
 	msg ...string,

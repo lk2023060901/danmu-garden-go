@@ -30,11 +30,11 @@ import (
 )
 
 const (
-	// infoLog indicates Info severity.
+	// infoLog 表示 Info 严重级别。
 	infoLog int = iota
-	// warningLog indicates Warning severity.
+	// warningLog 表示 Warning 严重级别。
 	warningLog
-	// errorLog indicates Error severity.
+	// errorLog 表示 Error 严重级别。
 	errorLog
 )
 
@@ -43,7 +43,7 @@ type zapWrapper struct {
 	logLevel int
 }
 
-// Info logs a message at InfoLevel.
+// Info 以 Info 级别输出一条日志。
 func (w *zapWrapper) Info(args ...interface{}) {
 	if infoLog >= w.logLevel {
 		w.logger.Sugar().Info(args...)
@@ -110,11 +110,11 @@ func (w *zapWrapper) Fatalf(format string, args ...interface{}) {
 	w.logger.Sugar().Fatalf(format, args...)
 }
 
-// V reports whether verbosity level l is at least the requested verbose level.
-// grpc LoggerV2
-// 0=info, 1=warning, 2=error, 3=fatal
-// zap
-// -1=debug, 0=info, 1=warning, 2=error, 3=dpanic, 4=panic, 5=fatal
+// V 用于判断给定的日志详细级别 l 是否满足当前 Logger 的输出条件。
+// grpc LoggerV2：
+//   0=info, 1=warning, 2=error, 3=fatal
+// zap：
+//   -1=debug, 0=info, 1=warning, 2=error, 3=dpanic, 4=panic, 5=fatal
 func (w *zapWrapper) V(l int) bool {
 	if l < w.logLevel {
 		return false
@@ -127,8 +127,8 @@ func (w *zapWrapper) V(l int) bool {
 	return w.logger.Core().Enabled(zapcore.Level(zapLevel))
 }
 
-// LogPanic logs the panic reason and stack, then exit the process.
-// Commonly used with a `defer`.
+// LogPanic 在发生 panic 时记录原因与堆栈信息，然后退出进程。
+// 通常配合 `defer` 使用。
 func LogPanic() {
 	if e := recover(); e != nil {
 		log.Fatal("panic", zap.Reflect("recover", e))
@@ -137,7 +137,7 @@ func LogPanic() {
 
 var once sync.Once
 
-// SetupLogger is used to initialize the log with config.
+// SetupLogger 根据配置初始化全局日志器。
 func SetupLogger(cfg *log.Config) {
 	once.Do(func() {
 		// Initialize logger.

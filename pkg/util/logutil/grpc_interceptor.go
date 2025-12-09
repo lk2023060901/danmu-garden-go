@@ -21,13 +21,13 @@ const (
 	clientRequestIDKey       = "client_request_id"
 )
 
-// UnaryTraceLoggerInterceptor adds a traced logger in unary rpc call ctx
+// UnaryTraceLoggerInterceptor 在一元 RPC 调用的上下文中注入带 Trace 信息的 Logger。
 func UnaryTraceLoggerInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	newctx := withLevelAndTrace(ctx)
 	return handler(newctx, req)
 }
 
-// StreamTraceLoggerInterceptor add a traced logger in stream rpc call ctx
+// StreamTraceLoggerInterceptor 在流式 RPC 调用的上下文中注入带 Trace 信息的 Logger。
 func StreamTraceLoggerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	ctx := ss.Context()
 	newctx := withLevelAndTrace(ctx)
@@ -41,7 +41,7 @@ func withLevelAndTrace(ctx context.Context) context.Context {
 	var traceID trace.TraceID
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		levels := GetMetadata(md, logLevelRPCMetaKey, logLevelRPCMetaKeyLegacy)
-		// get log level
+		// 解析客户端传入的日志级别。
 		if len(levels) >= 1 {
 			level := zapcore.DebugLevel
 			if err := level.UnmarshalText([]byte(levels[0])); err != nil {
@@ -62,30 +62,30 @@ func withLevelAndTrace(ctx context.Context) context.Context {
 					newctx = ctx
 				}
 			}
-			// inject log level to outgoing meta
+			// 将日志级别写回到 outgoing metadata 中。
 			newctx = metadata.AppendToOutgoingContext(newctx, logLevelRPCMetaKey, level.String())
 		}
-		// client request id
+		// 客户端请求 ID。
 		requestID := GetMetadata(md, clientRequestIDKey, clientRequestIDKeyLegacy)
 		if len(requestID) >= 1 {
-			// inject traceid in order to pass client request id
+			// 将客户端请求 ID 注入到 outgoing metadata 中。
 			newctx = metadata.AppendToOutgoingContext(newctx, clientRequestIDKey, requestID[0])
 			var err error
-			// if client-request-id is a valid traceID, use traceID path
+			// 如果 client-request-id 是合法的 TraceID，则直接使用该 TraceID。
 			traceID, err = trace.TraceIDFromHex(requestID[0])
 			if err != nil {
-				// set request id to custom field
+				// 如果不是合法的 TraceID，则以普通字段形式记录请求 ID。
 				newctx = log.WithFields(newctx, zap.String(clientRequestIDKey, requestID[0]))
 			}
 		}
 	}
-	// client request unixsecs
+	// 解析客户端请求的时间戳（毫秒）。
 	requestUnixmsec, ok := GetClientReqUnixmsecGrpc(newctx)
 	if ok {
 		newctx = log.WithFields(newctx, zap.Int64("clientRequestUnixmsec", requestUnixmsec))
 	}
 
-	// traceID not valid, generate a new one
+	// 如果当前 TraceID 不合法，则从上下文中生成/获取新的 TraceID。
 	if !traceID.IsValid() {
 		traceID = trace.SpanContextFromContext(newctx).TraceID()
 	}

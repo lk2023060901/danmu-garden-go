@@ -9,24 +9,23 @@ import (
 	zviper "github.com/lk2023060901/danmu-garden-go/pkg/util/viper"
 )
 
-// Application is the main runtime container for a Zeus service.
-// It owns configuration and manages common dependencies.
+// Application 是 Zeus 服务的运行时容器。
+// 负责持有配置，并管理通用依赖。
 type Application struct {
 	cfg     *zviper.Config
 	loggers map[string]*zlog.MLogger
 }
 
-// New creates a new Application instance.
+// New 创建一个新的 Application 实例。
 func New() *Application {
 	return &Application{}
 }
 
-// Run is the entry of Zeus application.
-// It parses command-line arguments (os.Args) and loads configuration file
-// using the following priority:
-//   1. Default: ./config.yaml
-//   2. Env: ZEUS_CONFIG_FILE_PATH
-//   3. CLI: --config <path> or --config=<path>
+// Run 是 Zeus 应用的入口。
+// 负责解析命令行参数（os.Args）并加载配置文件，优先级如下：
+//   1. 默认：./config.yaml
+//   2. 环境变量：ZEUS_CONFIG_FILE_PATH
+//   3. 命令行参数：--config <path> 或 --config=<path>
 func (a *Application) Run() error {
 	cfg, err := a.loadConfig()
 	if err != nil {
@@ -41,13 +40,13 @@ func (a *Application) Run() error {
 	return nil
 }
 
-// Config returns the loaded configuration, if any.
+// Config 返回已加载的配置。
 func (a *Application) Config() *zviper.Config {
 	return a.cfg
 }
 
-// Logger returns a named logger created from configuration.
-// If the name is unknown, it falls back to the global logger.
+// Logger 根据名称返回配置中创建的日志实例。
+// 如果名称未知，则回退到全局日志。
 func (a *Application) Logger(name string) *zlog.MLogger {
 	if a.loggers == nil {
 		return &zlog.MLogger{Logger: zlog.L()}
@@ -58,7 +57,7 @@ func (a *Application) Logger(name string) *zlog.MLogger {
 	return &zlog.MLogger{Logger: zlog.L()}
 }
 
-// loadConfig resolves config file path and loads it via viper wrapper.
+// loadConfig 解析配置文件路径，并通过 viper 封装进行加载。
 func (a *Application) loadConfig() (*zviper.Config, error) {
 	configPath := "./config.yaml"
 
@@ -94,7 +93,7 @@ func (a *Application) loadConfig() (*zviper.Config, error) {
 	return cfg, nil
 }
 
-// initLogging initializes global and module-level loggers.
+// initLogging 初始化全局日志和模块级日志。
 func (a *Application) initLogging() error {
 	if err := a.initGlobalLoggerFromEnv(); err != nil {
 		return err
@@ -105,15 +104,15 @@ func (a *Application) initLogging() error {
 	return nil
 }
 
-// initGlobalLoggerFromEnv configures the process-wide logger based on ZEUS_LOG_* env vars.
+// initGlobalLoggerFromEnv 基于 ZEUS_LOG_* 环境变量配置进程级全局日志。
 //
-// Priority:
-//   - ZEUS_LOG_ENABLE: "1"/"true" to enable outputs; others treated as disabled.
-//   - ZEUS_LOG_LEVEL: log level (default "info").
-//   - ZEUS_LOG_STDOUT: whether to log to stdout (default false).
-//   - ZEUS_LOG_FILE_DIR: log directory.
-//   - ZEUS_LOG_FILE: log file name (empty means no file).
-//   - ZEUS_LOG_FORMAT: log format ("text" or "json", default "text").
+// 优先级和含义：
+//   - ZEUS_LOG_ENABLE: "1"/"true" 时开启输出，其他视为关闭。
+//   - ZEUS_LOG_LEVEL: 日志级别（默认 "info"）。
+//   - ZEUS_LOG_STDOUT: 是否输出到 stdout（默认 false）。
+//   - ZEUS_LOG_FILE_DIR: 日志文件目录。
+//   - ZEUS_LOG_FILE: 日志文件名（为空表示不写文件）。
+//   - ZEUS_LOG_FORMAT: 日志格式（"text" 或 "json"，默认 "text"）。
 func (a *Application) initGlobalLoggerFromEnv() error {
 	enabled := getenvBool("ZEUS_LOG_ENABLE", false)
 
@@ -132,7 +131,7 @@ func (a *Application) initGlobalLoggerFromEnv() error {
 		},
 	}
 
-	// When not enabled, direct all outputs to a discarded sink.
+	// 未开启时，关闭所有输出（既不写文件也不打印到控制台）。
 	if !enabled {
 		cfg.Stdout = false
 		cfg.File.Filename = ""
@@ -146,9 +145,9 @@ func (a *Application) initGlobalLoggerFromEnv() error {
 	return nil
 }
 
-// initModuleLoggersFromConfig creates named loggers from YAML config under "logging" key.
+// initModuleLoggersFromConfig 从 YAML 配置中 "logging" 段创建具名日志实例。
 //
-// Example:
+// 配置示例：
 //   logging:
 //     game:
 //       level: debug
@@ -161,11 +160,11 @@ func (a *Application) initModuleLoggersFromConfig() error {
 		return nil
 	}
 
-	// Unmarshal "logging" section into a map[name]Config.
+	// 将 "logging" 段反序列化为 map[name]Config。
 	raw := make(map[string]zlog.Config)
 	if err := a.cfg.UnmarshalKey("logging", &raw); err != nil {
-		// If the key doesn't exist, UnmarshalKey typically leaves raw empty without error.
-		// Any real error should be returned.
+		// 如果 key 不存在，UnmarshalKey 通常会保持 raw 为空且不返回错误。
+		// 只有真实错误才需要返回。
 		return err
 	}
 	if len(raw) == 0 {

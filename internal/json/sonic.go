@@ -24,15 +24,15 @@ import (
 
 var (
 	json = sonic.ConfigStd
-	// Marshal is exported from bytedance/sonic package.
+	// Marshal 由 bytedance/sonic 包导出。
 	Marshal = json.Marshal
-	// Unmarshal is exported from bytedance/sonic package.
+	// Unmarshal 由 bytedance/sonic 包导出。
 	Unmarshal = json.Unmarshal
-	// MarshalIndent is exported from bytedance/sonic package.
+	// MarshalIndent 由 bytedance/sonic 包导出。
 	MarshalIndent = json.MarshalIndent
-	// NewDecoder is exported from bytedance/sonic package.
+	// NewDecoder 由 bytedance/sonic 包导出。
 	NewDecoder = json.NewDecoder
-	// NewEncoder is exported from bytedance/sonic package.
+	// NewEncoder 由 bytedance/sonic 包导出。
 	NewEncoder = json.NewEncoder
 )
 
