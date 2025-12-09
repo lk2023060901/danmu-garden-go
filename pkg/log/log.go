@@ -33,6 +33,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -52,6 +53,16 @@ var (
 	_namedRateLimiters sync.Map
 )
 
+// RateLimiter is the minimal interface used by rated logging helpers.
+type RateLimiter interface {
+	CheckCredit(delta float64) bool
+}
+
+// nopRateLimiter never drops logs.
+type nopRateLimiter struct{}
+
+func (nopRateLimiter) CheckCredit(delta float64) bool { return true }
+
 func init() {
 	l, p := newStdLogger()
 
@@ -62,8 +73,9 @@ func init() {
 	s := _globalL.Load().(*zap.Logger).Sugar()
 	_globalS.Store(s)
 
-	r := utils.NewRateLimiter(1.0, 60.0)
-	_globalR.Store(r)
+	// Initialize rate limiter as nop by default.
+	_globalR.Store(nopRateLimiter{})
+	configureRateLimiterFromEnv()
 }
 
 // InitLogger initializes a zap logger.
@@ -179,9 +191,15 @@ func S() *zap.SugaredLogger {
 	return _globalS.Load().(*zap.SugaredLogger)
 }
 
-// R returns utils.ReconfigurableRateLimiter.
-func R() *utils.ReconfigurableRateLimiter {
-	return _globalR.Load().(*utils.ReconfigurableRateLimiter)
+// R returns the global RateLimiter used by rated logging helpers.
+// It always returns a valid limiter; when rate limiting is disabled,
+// it falls back to a nop implementation that never drops logs.
+func R() RateLimiter {
+	val := _globalR.Load()
+	if rl, ok := val.(RateLimiter); ok && rl != nil {
+		return rl
+	}
+	return nopRateLimiter{}
 }
 
 func ctxL() *zap.Logger {
@@ -275,4 +293,59 @@ func Sync() error {
 
 func Level() zap.AtomicLevel {
 	return _globalP.Load().(*ZapProperties).Level
+}
+
+// configureRateLimiterFromEnv configures the global rate limiter based on ZEUS_LOG_RATE_* env vars.
+//
+//   - ZEUS_LOG_RATE_ENABLE: "1"/"true" to enable rate limiting (default true).
+//   - ZEUS_LOG_RATE_CREDIT_PER_SECOND: float, default 1.0.
+//   - ZEUS_LOG_RATE_MAX_BALANCE: float, default 60.0.
+func configureRateLimiterFromEnv() {
+	// Default is disabled; must be explicitly enabled via env.
+	enabled := getenvBool("ZEUS_LOG_RATE_ENABLE", false)
+	if !enabled {
+		_globalR.Store(nopRateLimiter{})
+		return
+	}
+
+	credit := getenvFloat("ZEUS_LOG_RATE_CREDIT_PER_SECOND", 1.0)
+	maxBalance := getenvFloat("ZEUS_LOG_RATE_MAX_BALANCE", 60.0)
+
+	rl := utils.NewRateLimiter(credit, maxBalance)
+	_globalR.Store(rl)
+}
+
+func getenvDefault(key, def string) string {
+	val := strings.TrimSpace(os.Getenv(key))
+	if val == "" {
+		return def
+	}
+	return val
+}
+
+func getenvBool(key string, def bool) bool {
+	val := strings.TrimSpace(os.Getenv(key))
+	if val == "" {
+		return def
+	}
+	switch strings.ToLower(val) {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return def
+	}
+}
+
+func getenvFloat(key string, def float64) float64 {
+	val := getenvDefault(key, "")
+	if val == "" {
+		return def
+	}
+	f, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		return def
+	}
+	return f
 }

@@ -52,12 +52,20 @@ func (l *MLogger) WithRateGroup(groupName string, creditPerSecond, maxBalance fl
 	return l
 }
 
-func (l *MLogger) r() utils.RateLimiter {
+func (l *MLogger) r() RateLimiter {
 	val := l.rl.Load()
-	if l.rl.Load() == nil {
+	if val == nil {
 		return R()
 	}
-	return val.(*utils.ReconfigurableRateLimiter)
+	// logger-level limiter stored by WithRateGroup
+	if rl, ok := val.(RateLimiter); ok {
+		return rl
+	}
+	// fallback: type from jaeger utils
+	if rl, ok := val.(utils.RateLimiter); ok {
+		return rl
+	}
+	return R()
 }
 
 // RatedDebug calls log.Debug with RateLimiter.
