@@ -25,8 +25,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/lk2023060901/danmu-garden-go/pkg/log"
-	commonpb "github.com/lk2023060901/danmu-garden-go/pkg/protos"
 	"github.com/lk2023060901/danmu-garden-go/pkg/util/logutil"
+	commonpb "github.com/lk2023060901/danmu-garden-go/internal/protos/framework"
 )
 
 const InputErrorFlagKey string = "is_input_error"

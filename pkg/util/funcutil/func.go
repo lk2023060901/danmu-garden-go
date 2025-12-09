@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc/codes"
 	grpcStatus "google.golang.org/grpc/status"
 
-	commonpb "github.com/lk2023060901/danmu-garden-go/pkg/protos"
+	commonpb "github.com/lk2023060901/danmu-garden-go/internal/protos/framework"
 	"github.com/lk2023060901/danmu-garden-go/pkg/log"
 	"github.com/lk2023060901/danmu-garden-go/pkg/util/typeutil"
 )

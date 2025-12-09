@@ -24,7 +24,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/suite"
 
-	commonpb "github.com/lk2023060901/danmu-garden-go/pkg/protos"
+	commonpb "github.com/lk2023060901/danmu-garden-go/internal/protos/framework"
 )
 
 type ErrSuite struct {
