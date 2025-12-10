@@ -65,7 +65,7 @@ func (c *ZstdCompressor) SetMinCompressSize(n int) {
 }
 
 // Compress 实现 Compressor 接口。
-func (c *ZstdCompressor) Compress(dst, src []byte) ([]byte, error) {
+func (c *ZstdCompressor) Compress(src []byte) ([]byte, error) {
 	if c == nil || c.enc == nil {
 		return nil, zstd.ErrEncoderClosed
 	}
@@ -75,16 +75,16 @@ func (c *ZstdCompressor) Compress(dst, src []byte) ([]byte, error) {
 		return src, nil
 	}
 
-	out := c.enc.EncodeAll(src, dst[:0])
+	out := c.enc.EncodeAll(src, nil)
 	return out, nil
 }
 
 // Decompress 实现 Compressor 接口。
-func (c *ZstdCompressor) Decompress(dst, src []byte) ([]byte, error) {
+func (c *ZstdCompressor) Decompress(src []byte) ([]byte, error) {
 	if c == nil || c.dec == nil {
 		return nil, zstd.ErrDecoderClosed
 	}
-	out, err := c.dec.DecodeAll(src, dst[:0])
+	out, err := c.dec.DecodeAll(src, nil)
 	if err != nil {
 		return nil, err
 	}
