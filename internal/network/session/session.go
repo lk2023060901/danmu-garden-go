@@ -3,74 +3,81 @@ package session
 import (
 	"context"
 	"net"
+	"sync/atomic"
+
+	protos "github.com/lk2023060901/danmu-garden-game-protos"
 )
 
-// Session 抽象了一条网络会话/连接。
-//
-// 约定：
-//   - 每个 Session 对应一条底层连接（例如一个 TCP 连接或 WebSocket 会话）。
-//   - Session ID 使用 64 位无符号整型，在框架内应保持全局唯一。
-//   - 框架层只关心会话本身，不关心“玩家”等具体业务概念。
-type Session interface {
-	// ID 返回该会话在框架内的全局唯一标识。
-	//
-	// 说明：
-	//   - 一般由框架在接入连接时分配（例如自增 uint64）。
-	//   - 业务层可以通过该 ID 建立 “Session <-> 玩家/用户” 的映射关系。
-	ID() uint64
+// Packet 直接使用已有的 Envelope 作为网络层数据包。
+type Packet = protos.Envelope
 
-	// Context 返回与该会话关联的上下文。
-	//
-	// 说明：
-	//   - 可用于级联取消：当会话关闭时，应触发 Context.Done()。
-	//   - 业务层可使用 Context 存放少量元数据（不建议存放大对象）。
+// MessageHeader 是 Envelope 的头部别名，便于在依赖方引用而无需直接依赖 proto 包。
+type MessageHeader = protos.MessageHeader
+
+// IDConstraint 限定 Session ID 的可选类型。
+//
+// 当前支持 uint64 或 string，两者足以覆盖大部分会话标识需求。
+type IDConstraint interface {
+	~uint64 | ~string
+}
+
+// IDGenerator 用于生成会话 ID。
+//
+// 通过泛型支持 uint64 或 string 等类型，具体类型由调用方在实例化时决定。
+type IDGenerator[ID IDConstraint] interface {
+	Next() ID
+}
+
+// Uint64IDGenerator 是一个简单的基于原子自增序列的 ID 生成器。
+type Uint64IDGenerator struct {
+	seq atomic.Uint64
+}
+
+// Next 返回下一个 uint64 ID。
+func (g *Uint64IDGenerator) Next() uint64 {
+	return g.seq.Add(1)
+}
+
+// ServerSession 抽象了服务器侧的一条网络会话。
+//
+// 说明：
+//   - ID 类型由泛型参数 ID 决定（通常为 uint64 或 string）；
+//   - 仅关心通用的会话属性与发送/接收能力，不绑定具体传输协议。
+type ServerSession[ID IDConstraint] interface {
+	// ID 返回该会话的唯一标识。
+	ID() ID
+
+	// Context 返回会话关联的上下文。
 	Context() context.Context
 
-	// RemoteAddr 返回远端地址（客户端地址）。
-	//
-	// 说明：
-	//   - 对于 TCP 连接，通常为 "ip:port"。
-	//   - 主要用于日志记录、审计或限流策略。
+	// RemoteAddr 返回远端地址。
 	RemoteAddr() net.Addr
 
-	// LocalAddr 返回本端地址（服务器监听地址）。
-	//
-	// 说明：
-	//   - 在多监听端口或多网卡场景下，可用于区分不同入口。
+	// LocalAddr 返回本端地址。
 	LocalAddr() net.Addr
 
-	// Send 通过框架的编解码链路向该会话发送一条业务消息。
+	// Send 发送一个高层业务对象。
 	//
-	// 参数：
-	//   - op  ：协议号，由调用方指定；
-	//   - msg ：业务层的请求/响应对象，由内部 Codec/Serializer 负责序列化与封包。
-	//
-	// 行为：
-	//   - 内部会按照 Codec 的 pipeline 依次执行：序列化 -> 压缩 -> 加密 -> 封装 Envelope -> 写出帧。
-	//   - 调用方只关心发送语义，不需要直接操作 Envelope 或底层连接。
+	// 具体编码逻辑（业务对象 -> Packet/字节）由底层 Codec 决定。
 	Send(op uint32, msg any) error
 
-	// Close 主动关闭该会话。
+	// Recv 返回只读的 Packet 接收通道。
 	//
 	// 说明：
-	//   - 应关闭底层连接，并触发 Context 的取消。
-	//   - 多次调用应是幂等的：对已关闭的会话再次调用 Close 不应引发 panic。
+	//   - 主要用于需要主动拉取消息的场景；
+	//   - 不强制要求所有调用方都使用该通道，Handler 也可以在 decode 后直接处理。
+	Recv() <-chan *Packet
+
+	// Close 主动关闭会话。
 	Close() error
 
-	// OnConnected 在会话（底层连接）建立成功后被调用一次。
+	// OnDisconnected 在底层连接关闭或出现不可恢复错误时被调用一次。
 	//
-	// 说明：
-	//   - 由接入层在完成 OnAccept 并创建好 Session 后调用；
-	//   - 可在实现中执行：初始化玩家上下文、打日志、注册到业务映射表等。
-	OnConnected()
-
-	// OnDisconnected 在会话检测到底层连接断开时被调用。
-	//
-	// 参数：
-	//   - err 为断开原因；正常关闭时可为 nil。
-	//
-	// 说明：
-	//   - 由接入层在读写错误、心跳超时或主动关闭 Session 时调用；
-	//   - 用于让 Session 自身感知断线，做内部清理或触发重连逻辑（如果有）。
+	// 实现可用于做内部清理或触发上层通知。
 	OnDisconnected(err error)
 }
+
+// Session 是使用 uint64 作为 ID 类型的服务器侧默认会话抽象。
+//
+// 说明：为了兼容现有代码（例如 router.Router），保留该别名作为非泛型入口。
+type Session = ServerSession[uint64]

@@ -3,7 +3,9 @@ package application
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	zlog "github.com/lk2023060901/danmu-garden-go/pkg/log"
 	zviper "github.com/lk2023060901/danmu-garden-go/pkg/util/viper"
@@ -36,6 +38,11 @@ func (a *Application) Run() error {
 	if err := a.initLogging(); err != nil {
 		return err
 	}
+
+	// 阻塞等待退出信号（例如 Ctrl+C），便于统一处理进程生命周期。
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	<-sigCh
 
 	return nil
 }

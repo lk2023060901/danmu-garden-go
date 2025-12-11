@@ -1,250 +1,372 @@
 package acceptor
 
 import (
+	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"io"
 	"net"
+	"net/http"
 	"sync"
+	"time"
 
+	"github.com/gorilla/websocket"
+
+	network "github.com/lk2023060901/danmu-garden-go/internal/network"
 	"github.com/lk2023060901/danmu-garden-go/internal/network/codec"
 	"github.com/lk2023060901/danmu-garden-go/internal/network/session"
-	protos "github.com/lk2023060901/danmu-garden-framework-protos/framework"
+	"github.com/lk2023060901/danmu-garden-go/pkg/util/conc"
 )
 
-// BaseAcceptor 是 Acceptor 接口的基础 TCP 实现。
+// wsAcceptor 是 Acceptor 的基于 gorilla/websocket 的默认实现。
+type wsAcceptor[ID session.IDConstraint] struct {
+	cfg   Config
+	idGen session.IDGenerator[ID]
+
+	upgrader websocket.Upgrader
+
+	mu       sync.RWMutex
+	sessions map[ID]*wsSession[ID]
+}
+
+// NewWSAcceptor 创建一个基于 WebSocket 的 Acceptor 实例。
 //
-// 设计目标：
-//   - 对外只暴露 Acceptor 接口和 Handler 回调，不绑定具体业务逻辑；
-//   - 内部负责：监听端口、接受连接、创建 Session、驱动解码并回调 Handler；
-//   - 每个连接使用独立的 goroutine 串行处理消息，保证同一 Session 上 Handler 串行执行。
-type BaseAcceptor struct {
-	ln       net.Listener
-	codec    codec.Codec
-	sessions session.SessionManager
+// 参数：
+//   - cfg   ：基础配置，留空字段将使用默认值；
+//   - idGen ：会话 ID 生成器，若为 nil 且 ID 为 uint64，则使用默认的 Uint64IDGenerator。
+func NewWSAcceptor[ID session.IDConstraint](cfg Config, idGen session.IDGenerator[ID]) Acceptor[ID] {
+	def := defaultConfig()
+	if cfg.SendQueueSize <= 0 {
+		cfg.SendQueueSize = def.SendQueueSize
+	}
+	if cfg.RecvQueueSize <= 0 {
+		cfg.RecvQueueSize = def.RecvQueueSize
+	}
+	if cfg.Path == "" {
+		cfg.Path = def.Path
+	}
+
+	if cfg.Codec == nil {
+		panic("acceptor: Codec is nil")
+	}
+
+	var upgrader websocket.Upgrader
+	if cfg.Upgrader != nil {
+		upgrader = *cfg.Upgrader
+	} else {
+		upgrader = websocket.Upgrader{
+			// 读写缓冲大小交由 gorilla 默认处理即可。
+			CheckOrigin: func(r *http.Request) bool { return true },
+		}
+	}
+
+	// 若调用方未提供 ID 生成器且 ID 为 uint64，则使用默认实现。
+	if idGen == nil {
+		var zero ID
+		switch any(zero).(type) {
+		case uint64:
+			idGen = any(&session.Uint64IDGenerator{}).(session.IDGenerator[ID])
+		}
+	}
+
+	return &wsAcceptor[ID]{
+		cfg:      cfg,
+		idGen:    idGen,
+		upgrader: upgrader,
+		sessions: make(map[ID]*wsSession[ID]),
+	}
+}
+
+// Serve 在给定 listener 上启动 HTTP+WebSocket 服务。
+func (a *wsAcceptor[ID]) Serve(ctx context.Context, ln net.Listener, h AcceptorHandler[ID]) error {
+	mux := http.NewServeMux()
+	mux.HandleFunc(a.cfg.Path, func(w http.ResponseWriter, r *http.Request) {
+		conn, err := a.upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			// 握手失败直接返回，由上层日志记录。
+			return
+		}
+
+		sessID := a.idGen.Next()
+		sessCtx, cancel := context.WithCancel(ctx)
+
+		ws := newWSSession(sessCtx, cancel, sessID, conn, a.cfg, h)
+
+		a.mu.Lock()
+		a.sessions[sessID] = ws
+		a.mu.Unlock()
+
+		h.OnConnected(ws)
+	})
+
+	srv := &http.Server{
+		Handler: mux,
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.Serve(ln)
+	}()
+
+	select {
+	case <-ctx.Done():
+		if err := srv.Shutdown(context.Background()); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			// 无法直接关联到具体会话，这里仅返回 ctx.Err。
+		}
+		// 关闭所有会话，忽略关闭过程中的错误。
+		a.Close()
+		return ctx.Err()
+	case err := <-errCh:
+		// 尝试关闭所有会话，将 Close 的错误优先级低于 srv.Serve 返回的错误。
+		if closeErr := a.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+		return err
+	}
+}
+
+// Close 关闭所有会话。
+func (a *wsAcceptor[ID]) Close() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	for _, s := range a.sessions {
+		// 会话关闭失败在各自的 close 中上报，这里忽略返回值。
+		s.Close()
+	}
+	a.sessions = make(map[ID]*wsSession[ID])
+	return nil
+}
+
+// Sessions 返回当前会话快照。
+func (a *wsAcceptor[ID]) Sessions() []session.ServerSession[ID] {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	out := make([]session.ServerSession[ID], 0, len(a.sessions))
+	for _, s := range a.sessions {
+		out = append(out, s)
+	}
+	return out
+}
+
+// outboundMessage 表示一条待发送的业务消息。
+type outboundMessage struct {
+	op  uint32
+	msg any
+}
+
+// wsSession 是基于 WebSocket 的 ServerSession 默认实现。
+type wsSession[ID session.IDConstraint] struct {
+	id ID
+
+	conn *websocket.Conn
+
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	cfg Config
+
+	handler AcceptorHandler[ID]
+
+	remoteAddr net.Addr
+	localAddr  net.Addr
+
+	sendChan chan outboundMessage
+	recvChan chan *Packet
+
+	codec codec.Codec
 
 	closeOnce sync.Once
 }
 
-// 确保 BaseAcceptor 实现了 Acceptor 接口。
-var _ Acceptor = (*BaseAcceptor)(nil)
+// newWSSession 创建一个新的 wsSession，并启动收发协程。
+func newWSSession[ID session.IDConstraint](
+	ctx context.Context,
+	cancel context.CancelFunc,
+	id ID,
+	conn *websocket.Conn,
+	cfg Config,
+	h AcceptorHandler[ID],
+) *wsSession[ID] {
+	s := &wsSession[ID]{
+		id:        id,
+		conn:      conn,
+		ctx:       ctx,
+		cancel:    cancel,
+		cfg:       cfg,
+		handler:    h,
+		remoteAddr: conn.RemoteAddr(),
+		localAddr:  conn.LocalAddr(),
+		sendChan:   make(chan outboundMessage, cfg.SendQueueSize),
+		recvChan:   make(chan *Packet, cfg.RecvQueueSize),
+		codec:      cfg.Codec,
+	}
 
-// inboundFrame 表示一条已解码但尚未交由业务处理的消息帧。
-// header 为 MessageHeader，payload 为已完成解密/解压缩的业务字节。
-type inboundFrame struct {
-	header  *protos.MessageHeader
-	payload []byte
+	// 使用封装的 conc.Go 启动收发协程，避免直接使用原生 go 关键字。
+	_ = conc.Go(func() (struct{}, error) {
+		s.recvLoop()
+		return struct{}{}, nil
+	})
+	_ = conc.Go(func() (struct{}, error) {
+		s.sendLoop()
+		return struct{}{}, nil
+	})
+
+	return s
 }
 
-const defaultInboundQueueSize = 1024
+// 编译期断言：wsSession 实现了 ServerSession 接口（以 uint64 为例）。
+var _ session.ServerSession[uint64] = (*wsSession[uint64])(nil)
 
-// NewBaseAcceptor 使用已有的 Listener 创建一个基础接入器。
-//
-// 参数：
-//   - ln ：已创建好的 net.Listener（例如 TCP 监听器）；
-//   - c  ：用于当前接入器所有连接的 Codec；
-//   - sm ：SessionManager，可为 nil；非 nil 时会在连接建立/关闭时自动注册和移除 Session。
-func NewBaseAcceptor(ln net.Listener, c codec.Codec, sm session.SessionManager) (*BaseAcceptor, error) {
-	if ln == nil {
-		return nil, fmt.Errorf("acceptor: listener is nil")
+// ServerSession 接口实现。
+
+func (s *wsSession[ID]) ID() ID                         { return s.id }
+func (s *wsSession[ID]) Context() context.Context       { return s.ctx }
+func (s *wsSession[ID]) RemoteAddr() net.Addr           { return s.remoteAddr }
+func (s *wsSession[ID]) LocalAddr() net.Addr            { return s.localAddr }
+func (s *wsSession[ID]) Recv() <-chan *Packet           { return s.recvChan }
+func (s *wsSession[ID]) OnDisconnected(error)           {}
+func (s *wsSession[ID]) Close() error                   { return s.close(nil) }
+func (s *wsSession[ID]) Send(op uint32, msg any) error  { return s.enqueueOutbound(op, msg) }
+
+// 内部辅助方法。
+
+func (s *wsSession[ID]) enqueueOutbound(op uint32, msg any) error {
+	select {
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	case s.sendChan <- outboundMessage{op: op, msg: msg}:
+		return nil
 	}
-	if c == nil {
-		return nil, fmt.Errorf("acceptor: codec is nil")
-	}
-	return &BaseAcceptor{
-		ln:       ln,
-		codec:    c,
-		sessions: sm,
-	}, nil
 }
 
-// NewTCPAcceptor 在给定地址上监听 TCP，并创建一个基础接入器。
-//
-// 参数：
-//   - addr：监听地址，例如 "0.0.0.0:9000"；
-//   - c   ：用于当前接入器所有连接的 Codec；
-//   - sm  ：SessionManager，可为 nil。
-func NewTCPAcceptor(addr string, c codec.Codec, sm session.SessionManager) (*BaseAcceptor, error) {
-	if addr == "" {
-		return nil, fmt.Errorf("acceptor: addr is empty")
+func (s *wsSession[ID]) writeRaw(data []byte) error {
+	if len(data) == 0 {
+		return nil
 	}
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-	return NewBaseAcceptor(ln, c, sm)
-}
-
-// Serve 实现 Acceptor.Serve。
-func (a *BaseAcceptor) Serve(ctx context.Context, h Handler) error {
-	if h == nil {
-		return fmt.Errorf("acceptor: handler is nil")
-	}
-	if a.ln == nil {
-		return fmt.Errorf("acceptor: listener is nil")
-	}
-
-	var wg sync.WaitGroup
-	defer wg.Wait()
-
-	for {
-		conn, err := a.ln.Accept()
-		if err != nil {
-			// 若上层已取消，则将错误视为正常退出。
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			// 若为超时错误，则交由 Handler.OnTimeout 决定后续行为。
-			if ne, ok := err.(net.Error); ok && ne.Timeout() {
-				if terr := h.OnTimeout(nil); terr != nil {
-					// OnTimeout 返回非 nil，结束接入循环，将错误向上返回。
-					return terr
-				}
-				// 忽略本次超时，继续接受新连接。
-				continue
-			}
-
-			// 其他错误交由上层决定是否重试或重建接入器。
-			return err
+	if s.cfg.WriteTimeout > 0 {
+		if err := s.conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout)); err != nil {
+			s.handler.OnError(s, network.StageSend, err)
+			s.close(network.ErrSendFailed)
+			return network.ErrSendFailed
 		}
-
-		wg.Add(1)
-		go func(conn net.Conn) {
-			defer wg.Done()
-			a.handleConnection(ctx, conn, h)
-		}(conn)
 	}
+	if err := s.conn.WriteMessage(websocket.BinaryMessage, data); err != nil {
+		s.handler.OnError(s, network.StageSend, err)
+		s.close(err)
+		return network.ErrSendFailed
+	}
+	return nil
 }
 
-// Close 实现 Acceptor.Close。
-func (a *BaseAcceptor) Close() error {
+func (s *wsSession[ID]) close(cause error) error {
 	var err error
-	a.closeOnce.Do(func() {
-		if a.ln != nil {
-			err = a.ln.Close()
+	s.closeOnce.Do(func() {
+		if s.cancel != nil {
+			s.cancel()
 		}
+		if s.conn != nil {
+			if cerr := s.conn.Close(); cerr != nil && err == nil {
+				err = cerr
+			}
+		}
+		close(s.sendChan)
+		close(s.recvChan)
+		s.handler.OnClosed(s, cause)
+		s.OnDisconnected(cause)
 	})
 	return err
 }
 
-// handleConnection 处理单个连接的生命周期。
-//
-// 流程：
-//   1. 调用 Handler.OnAccept 创建 Session 实例；
-//   2. 可选地将 Session 注册到 SessionManager；
-//   3. 调用 sess.OnConnected()；
-//   4. 通过读协程循环读取并解码消息帧，将结果投递到 per-session 消息队列；
-//   5. 在当前协程中按顺序从队列中取出消息，并回调 Handler.OnMessage；
-//   6. 读写或解码失败后，调用 sess.OnDisconnected(err) 与 Handler.OnSessionClosed。
-func (a *BaseAcceptor) handleConnection(parentCtx context.Context, conn net.Conn, h Handler) {
-	// 为该会话创建独立的上下文，便于级联取消。
-	ctx, cancel := context.WithCancel(parentCtx)
-	defer cancel()
+// recvLoop 持续从 WebSocket 读取消息并使用 Codec 解码为 Packet。
+func (s *wsSession[ID]) recvLoop() {
+	defer s.close(nil)
 
-	// 创建 Session。
-	sess, err := h.OnAccept(ctx, conn, a.codec)
-	if err != nil {
-		_ = conn.Close()
-		h.OnError(nil, err)
-		return
-	}
-	if sess == nil {
-		_ = conn.Close()
-		return
-	}
-
-	// 注册 Session（可选）。
-	if a.sessions != nil {
-		if err := a.sessions.Register(sess); err != nil {
-			h.OnError(sess, err)
-			_ = sess.Close()
-			return
-		}
-		defer func() {
-			_ = a.sessions.Unregister(sess.ID())
-		}()
-	}
-
-	// 通知会话已建立。
-	sess.OnConnected()
-
-	// 在函数结束时负责通知断开和关闭。
-	var cause error
-	defer func() {
-		sess.OnDisconnected(cause)
-		h.OnSessionClosed(sess, cause)
-		_ = sess.Close()
-	}()
-
-	// per-session 消息队列：读协程负责投递，当前协程顺序消费。
-	frames := make(chan inboundFrame, defaultInboundQueueSize)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-		cause = a.readLoop(ctx, sess, conn, h, frames)
-		close(frames)
-	}()
-
-	// 顺序消费消息帧，确保同一 Session 上的业务 Handler 串行执行。
-	for frame := range frames {
-		h.OnMessage(sess, frame.header, frame.payload)
-	}
-
-	// 等待读协程退出。
-	wg.Wait()
-
-	// 若没有显式错误原因，则使用上下文错误（例如超时或被取消）。
-	if cause == nil && ctx.Err() != nil && !errors.Is(ctx.Err(), context.Canceled) {
-		cause = ctx.Err()
-	}
-}
-
-// readLoop 持续从连接中读取并解码消息帧，将结果写入 frames 通道。
-//
-// 返回值：
-//   - 非 nil error 表示读/解码过程中发生的错误（包括 OnTimeout 返回的错误）；
-//   - nil 表示正常结束（例如对端关闭连接）。
-func (a *BaseAcceptor) readLoop(ctx context.Context, sess session.Session, conn net.Conn, h Handler, frames chan<- inboundFrame) error {
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
+		case <-s.ctx.Done():
+			return
 		default:
 		}
 
-		header, payload, err := a.codec.DecodeRaw(conn)
+		if s.cfg.ReadTimeout > 0 {
+			if err := s.conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout)); err != nil {
+				s.handler.OnError(s, network.StageRecvRaw, err)
+				s.close(network.ErrRecvFailed)
+				return
+			}
+		}
+
+		msgType, data, err := s.conn.ReadMessage()
 		if err != nil {
-			// EOF/连接关闭视为正常断开。
-			if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
-				return nil
+			s.handler.OnError(s, network.StageRecvRaw, err)
+			s.close(network.ErrRecvFailed)
+			return
+		}
+		if msgType != websocket.BinaryMessage {
+			// 当前仅处理二进制帧，其余类型直接忽略。
+			continue
+		}
+
+		header, payload, err := s.codec.DecodeRaw(bytes.NewReader(data))
+		if err != nil {
+			s.handler.OnError(s, network.StageDecode, err)
+			continue
+		}
+		if header == nil {
+			continue
+		}
+
+		pkt := &Packet{
+			Header:  header,
+			Payload: payload,
+		}
+
+		// 投递给接收队列（可选）
+		select {
+		case <-s.ctx.Done():
+			return
+		case s.recvChan <- pkt:
+		default:
+			// 队列已满时丢弃，具体策略可按需调整。
+		}
+
+		// 回调业务处理。
+		s.handler.OnMessage(s, header, payload)
+	}
+}
+
+// sendLoop 从 sendChan 读取业务消息并使用 Codec 编码后写入到底层连接。
+func (s *wsSession[ID]) sendLoop() {
+	defer s.close(nil)
+
+	var seq uint64
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case msg, ok := <-s.sendChan:
+			if !ok {
+				return
 			}
 
-			// 超时错误交由 OnTimeout 决定是否结束会话。
-			if ne, ok := err.(net.Error); ok && ne.Timeout() {
-				if terr := h.OnTimeout(sess); terr != nil {
-					return terr
-				}
-				// 忽略本次超时，继续读取。
+			seq++
+			header := &session.MessageHeader{
+				Op:        msg.op,
+				Seq:       seq,
+				Timestamp: time.Now().UnixNano(),
+			}
+
+			var buf bytes.Buffer
+			if err := s.codec.Encode(&buf, header, msg.msg); err != nil {
+				s.handler.OnError(s, network.StageEncode, err)
 				continue
 			}
 
-			// 其他错误交由 OnError 处理，并结束会话。
-			h.OnError(sess, err)
-			return err
-		}
-
-		// 将完整帧投递到 per-session 消息队列。
-		select {
-		case frames <- inboundFrame{header: header, payload: payload}:
-		case <-ctx.Done():
-			return ctx.Err()
+			if err := s.writeRaw(buf.Bytes()); err != nil {
+				return
+			}
 		}
 	}
 }

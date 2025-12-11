@@ -5,7 +5,7 @@ import (
 
 	"github.com/lk2023060901/danmu-garden-go/internal/network/serializer"
 	"github.com/lk2023060901/danmu-garden-go/internal/network/session"
-	protos "github.com/lk2023060901/danmu-garden-framework-protos/framework"
+	protos "github.com/lk2023060901/danmu-garden-game-protos"
 )
 
 // Handler 是框架暴露给业务层的通用处理函数签名。

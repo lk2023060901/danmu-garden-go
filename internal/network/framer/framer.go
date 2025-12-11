@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/lk2023060901/danmu-garden-go/internal/pool/bytebuffer"
-	protos "github.com/lk2023060901/danmu-garden-framework-protos/framework"
+	protos "github.com/lk2023060901/danmu-garden-game-protos"
 )
 
 // Framer 抽象了基于 Envelope 的打包/解包能力。

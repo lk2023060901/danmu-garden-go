@@ -9,7 +9,7 @@ import (
 	"github.com/lk2023060901/danmu-garden-go/internal/network/crypto"
 	"github.com/lk2023060901/danmu-garden-go/internal/network/framer"
 	"github.com/lk2023060901/danmu-garden-go/internal/network/serializer"
-	protos "github.com/lk2023060901/danmu-garden-framework-protos/framework"
+	protos "github.com/lk2023060901/danmu-garden-game-protos"
 )
 
 // Codec 抽象了“从业务对象到网络帧，以及从网络帧回到业务对象”的完整编解码流程。

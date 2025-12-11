@@ -12,6 +12,7 @@ require (
 	github.com/json-iterator/go v1.1.13-0.20220915233716-71ac16282d12
 	github.com/klauspost/compress v1.18.2
 	github.com/lk2023060901/danmu-garden-framework-protos v0.0.0-20251209225807-d7d71ca71206
+	github.com/lk2023060901/danmu-garden-game-protos v0.0.0-20251211013026-0f228481dbf9
 	github.com/panjf2000/ants/v2 v2.11.3
 	github.com/prometheus/client_golang v1.20.5
 	github.com/samber/lo v1.52.0
@@ -134,3 +135,5 @@ require (
 )
 
 replace github.com/lk2023060901/danmu-garden-framework-protos => ../danmu-garden-framework-protos
+
+replace github.com/lk2023060901/danmu-garden-game-protos => ../danmu-garden-game-protos
