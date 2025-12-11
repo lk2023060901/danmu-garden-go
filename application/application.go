@@ -14,9 +14,24 @@ import (
 // Application 是 Zeus 服务的运行时容器。
 // 负责持有配置，并管理通用依赖。
 type Application struct {
-	cfg     *zviper.Config
-	loggers map[string]*zlog.MLogger
+	cfg           *zviper.Config
+	loggers       map[string]*zlog.MLogger
+	signalHandler func(kind SignalKind, sig os.Signal)
 }
+
+// SignalKind 表示框架抽象出的信号语义。
+//
+// 用于将底层 os.Signal 映射为更易于业务理解的类别。
+type SignalKind int
+
+const (
+	SignalUnknown  SignalKind = iota
+	SignalShutdown            // 优雅停服（SIGINT/SIGTERM）
+	SignalReload              // 配置/日志重载（SIGHUP）
+	SignalDiagnose            // 诊断性操作（SIGQUIT）
+	SignalUser1               // 预留给用户自定义控制（SIGUSR1）
+	SignalUser2               // 预留给用户自定义控制（SIGUSR2）
+)
 
 // New 创建一个新的 Application 实例。
 func New() *Application {
@@ -40,11 +55,82 @@ func (a *Application) Run() error {
 	}
 
 	// 阻塞等待退出信号（例如 Ctrl+C），便于统一处理进程生命周期。
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
+	// 默认行为：直到收到一个“停服类”信号（SIGINT/SIGTERM）才返回；
+	// 其余信号会通过应用级信号处理回调（如已注册）交由调用方决定具体行为。
+	a.WaitForShutdownSignal()
 
 	return nil
+}
+
+// OnSignal 注册应用级信号处理回调。
+//
+// 回调在 Application 内部捕获到信号后被调用，调用顺序：
+//   1. WaitForSignal 将 OS 信号映射为 SignalKind；
+//   2. 若已注册 signalHandler，则先调用 handler(kind, sig)；
+//   3. 若 kind == SignalShutdown，则 WaitForShutdownSignal 返回，Run 随之返回。
+//
+// 注意：
+//   - 回调在调用 OnSignal 的 goroutine 中执行，通常为 main goroutine；
+//   - 回调内的行为由框架使用者自行决定，例如：重载配置、输出诊断信息等。
+func (a *Application) OnSignal(handler func(kind SignalKind, sig os.Signal)) {
+	a.signalHandler = handler
+}
+
+// WaitForShutdownSignal 阻塞直到收到一个“停服类”信号（SIGINT 或 SIGTERM）。
+//
+// 对于其它信号（SIGHUP/SIGQUIT/SIGUSR1/SIGUSR2），调用方可通过 WaitForSignal
+// 获取更细粒度的控制，并决定是否重载配置、做诊断或执行自定义逻辑。
+func (a *Application) WaitForShutdownSignal() {
+	for {
+		_, kind := a.WaitForSignal()
+		if a.signalHandler != nil {
+			// 交由应用使用者决定不同信号的具体行为。
+			a.signalHandler(kind, nil)
+		}
+		if kind == SignalShutdown {
+			return
+		}
+	}
+}
+
+// WaitForSignal 阻塞等待进程级控制信号，并返回其语义类别。
+//
+// 当前监听的信号包括：
+//   - SIGINT  ：映射为 SignalShutdown（通常由 Ctrl+C 触发）；
+//   - SIGTERM ：映射为 SignalShutdown（容器/进程管理器正常停服信号）；
+//   - SIGHUP  ：映射为 SignalReload（配置/日志重载）；
+//   - SIGQUIT ：映射为 SignalDiagnose（诊断性操作，如输出堆栈）；
+//   - SIGUSR1 ：映射为 SignalUser1（用户自定义控制）；
+//   - SIGUSR2 ：映射为 SignalUser2（用户自定义控制）。
+//
+// 调用方可根据返回的 kind 决定具体行为。
+func (a *Application) WaitForSignal() (os.Signal, SignalKind) {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGHUP,
+		syscall.SIGQUIT,
+		syscall.SIGUSR1,
+		syscall.SIGUSR2,
+	)
+
+	sig := <-sigCh
+
+	switch sig {
+	case syscall.SIGINT, syscall.SIGTERM:
+		return sig, SignalShutdown
+	case syscall.SIGHUP:
+		return sig, SignalReload
+	case syscall.SIGQUIT:
+		return sig, SignalDiagnose
+	case syscall.SIGUSR1:
+		return sig, SignalUser1
+	case syscall.SIGUSR2:
+		return sig, SignalUser2
+	default:
+		return sig, SignalUnknown
+	}
 }
 
 // Config 返回已加载的配置。
