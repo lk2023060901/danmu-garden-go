@@ -39,7 +39,12 @@ require (
 )
 
 require (
+	github.com/alibabacloud-go/debug v1.0.0 // indirect
+	github.com/alibabacloud-go/tea v1.3.14 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bytedance/douyin-openapi-credential-go v0.0.0-20240627133153-7f4587ca06ce // indirect
+	github.com/bytedance/douyin-openapi-sdk-go v1.0.3 // indirect
+	github.com/bytedance/douyin-openapi-util-go v0.0.0-20240627134255-db766d8741c8 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cilium/ebpf v0.16.0 // indirect
@@ -58,6 +63,7 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/go-resty/resty/v2 v2.17.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
@@ -124,7 +130,7 @@ require (
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
-	golang.org/x/time v0.9.0 // indirect
+	golang.org/x/time v0.12.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250303144028-a0af3efb3deb // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
