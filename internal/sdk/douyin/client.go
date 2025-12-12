@@ -158,7 +158,7 @@ func (c *Client) MiniAppPostJSON(
 		return err
 	}
 
-	base, err := url.Parse("https://developer.toutiao.com")
+	base, err := url.Parse(c.cfg.MiniAppBaseURL)
 	if err != nil {
 		return fmt.Errorf("douyin: parse mini-app base url failed: %w", err)
 	}
