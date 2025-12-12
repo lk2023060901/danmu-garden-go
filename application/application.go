@@ -82,10 +82,10 @@ func (a *Application) OnSignal(handler func(kind SignalKind, sig os.Signal)) {
 // 获取更细粒度的控制，并决定是否重载配置、做诊断或执行自定义逻辑。
 func (a *Application) WaitForShutdownSignal() {
 	for {
-		_, kind := a.WaitForSignal()
+		sig, kind := a.WaitForSignal()
 		if a.signalHandler != nil {
 			// 交由应用使用者决定不同信号的具体行为。
-			a.signalHandler(kind, nil)
+			a.signalHandler(kind, sig)
 		}
 		if kind == SignalShutdown {
 			return
@@ -131,6 +131,13 @@ func (a *Application) WaitForSignal() (os.Signal, SignalKind) {
 	default:
 		return sig, SignalUnknown
 	}
+}
+
+// Shutdown 预留的应用级收尾钩子。
+//
+// 当前实现为占位，调用方可在未来通过扩展 Application 结构体添加资源清理逻辑。
+func (a *Application) Shutdown() {
+	// no-op for now
 }
 
 // Config 返回已加载的配置。
