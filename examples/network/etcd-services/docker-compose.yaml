@@ -1,0 +1,23 @@
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.14
+    container_name: etcd-local
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd-local
+      - --data-dir=/var/lib/etcd
+      - --advertise-client-urls=http://127.0.0.1:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-advertise-peer-urls=http://0.0.0.0:2380
+      - --initial-cluster=etcd-local=http://0.0.0.0:2380
+      - --initial-cluster-token=etcd-cluster-1
+      - --initial-cluster-state=new
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: "revision"
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_LOG_LEVEL: "info"
+    restart: unless-stopped
