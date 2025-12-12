@@ -256,6 +256,3 @@ func (c *Client) MiniAppPostJSON(
 	}
 	return fmt.Errorf("douyin: mini-app request failed after %d attempts", attempts)
 }
-
-// 注意：具体业务 API（如优惠券、直播间等）应在各自的模块文件中封装，
-// 例如 coupon.go / live.go 等，以便按功能划分维护。
